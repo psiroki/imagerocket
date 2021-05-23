@@ -3,8 +3,6 @@ import { ProcessNode, processNodes } from "./process_node.js";
 import { Color, Sampler } from "./samplers.js";
 import * as util from "./util.js";
 
-const debugThisOne = false;
-
 export class SimpleCropper extends ProcessNode {
 
   serialize(): object {
@@ -110,11 +108,7 @@ export class SimpleCropper extends ProcessNode {
       let dpos = dy * wordPitch + dx;
       // block transfer
       for (let y = 0; y < keptHeight; ++y) {
-        if (debugThisOne && (y&1)) {
-          resultWords.subarray(dpos, dpos + keptWidth).fill(0xcafebaff);
-        } else {
-          resultWords.set(sourceWords.subarray(spos, spos + keptWidth), dpos);
-        }
+        resultWords.set(sourceWords.subarray(spos, spos + keptWidth), dpos);
         dpos += wordPitch;
         spos += sourceWordPitch;
       }
