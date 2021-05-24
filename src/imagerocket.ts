@@ -4,7 +4,7 @@ import { processNodes } from "./processing/process_node.js";
 import { TopLeftSampler } from "./processing/samplers.js";
 
 import * as drop from "./ui/drop.js";
-import * as util from "./processing/util";
+import * as util from "./processing/util.js";
 
 const pasteTargets = new Set(["text", "number"]);
 
