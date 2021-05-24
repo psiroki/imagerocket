@@ -91,7 +91,7 @@ class ProcessNodeDeserializer {
     }
     for (let serializedForm of serializedNodes) {
       let resolved = this.resolveReferences(serializedForm);
-      this.nodeById.get(serializedForm["_id"]).deserialize(resolved);
+      this.nodeById.get(serializedForm["_id"])!.deserialize(resolved);
     }
     return Array.from(this.nodeById.values());
   }
@@ -137,11 +137,11 @@ export class ProcessNodes {
   }
 
   className(classFunction: ProcessNodeConstructor): string {
-    return this.nameByClass.get(classFunction);
+    return this.nameByClass.get(classFunction)!;
   }
 
   lookupClass(name: string): ProcessNodeConstructor {
-    return this.classByName.get(name);
+    return this.classByName.get(name)!;
   }
 
   protected readonly classByName: Map<string, ProcessNodeConstructor> = new Map();

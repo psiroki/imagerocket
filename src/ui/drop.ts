@@ -14,7 +14,7 @@ export interface HoverCallback {
   (event: DragEvent, dropHandler: DropHandlerApi): any;
 }
 
-export function dropHandler(element: Element, callback: DropCallback, hoverCallback: HoverCallback=null) {
+export function dropHandler(element: Element, callback: DropCallback, hoverCallback: HoverCallback|null=null) {
   let api: DropHandlerApi | null = null;
 
   let dragging = false;
@@ -26,7 +26,7 @@ export function dropHandler(element: Element, callback: DropCallback, hoverCallb
     let foundFiles = false;
     files.forEach(function (f) {
       foundFiles = true;
-      callback(f as Blob, event, api);
+      callback(f as Blob, event, api!);
     });
     return foundFiles;
   }
@@ -36,11 +36,11 @@ export function dropHandler(element: Element, callback: DropCallback, hoverCallb
   }
 
   function dragOver(e: DragEvent) {
-    e.dataTransfer.dropEffect = "copy";
+    e.dataTransfer!.dropEffect = "copy";
     dropX = e.clientX;
     dropY = e.clientY;
     dragging = true;
-    if (!hoverCallback || b(hoverCallback(e, api))) {
+    if (!hoverCallback || b(hoverCallback(e, api!))) {
       e.stopPropagation();
       e.preventDefault();
     } else {
@@ -50,9 +50,9 @@ export function dropHandler(element: Element, callback: DropCallback, hoverCallb
   }
 
   function drop(e: DragEvent) {
-    handleDataTransferFiles(e.dataTransfer, e);
+    handleDataTransferFiles(e.dataTransfer!, e);
     dragging = false;
-    if (!hoverCallback || b(hoverCallback(e, api))) {
+    if (!hoverCallback || b(hoverCallback(e, api!))) {
       e.stopPropagation();
       e.preventDefault();
     }
@@ -64,7 +64,7 @@ export function dropHandler(element: Element, callback: DropCallback, hoverCallb
     dragging = true;
     dropX = e.clientX;
     dropY = e.clientY;
-    if (hoverCallback && !b(hoverCallback(e, api))) {
+    if (hoverCallback && !b(hoverCallback(e, api!))) {
       dragging = false;
     }
     this.classList.toggle("dragOver", dragging);
@@ -74,7 +74,7 @@ export function dropHandler(element: Element, callback: DropCallback, hoverCallb
     this.classList.remove("dragOver");
     dragging = false;
     dropX = dropY = null;
-    if (hoverCallback) hoverCallback(e, api);
+    if (hoverCallback) hoverCallback(e, api!);
   }
 
   let bound = false;

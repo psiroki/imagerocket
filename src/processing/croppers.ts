@@ -19,7 +19,7 @@ export class SimpleCropper extends ProcessNode {
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
     const expand = this.expand ?? 0;
-    const border = await this.borderColorSampler.extractColor(buffer);
+    const border = await this.borderColorSampler!.extractColor(buffer);
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
     let rect = [0, 0, inputWidth, inputHeight];
@@ -35,9 +35,10 @@ export class SimpleCropper extends ProcessNode {
         rect[side] -= (side & 2) - 1;
       }
     }
+    const cropRect = Array.from(rect);
     if (expand > 0) {
       console.log("Crop rect before expansion: "+rect);
-      rect = rect.map((e, i) => e + ((i & 2) - 1)*expand);
+      rect = cropRect.map((e, i) => e + ((i & 2) - 1)*expand);
       console.log("Crop rect after expansion: "+rect);
     }
     // check for idempotent operation
@@ -144,8 +145,8 @@ export class SimpleCropper extends ProcessNode {
     return true;
   }
 
-  borderColorSampler: Sampler = null;
-  expand: number = null;
+  borderColorSampler: Sampler | null = null;
+  expand: number = 0;
 }
 
 SimpleCropper["className"] = "SimpleCropper";

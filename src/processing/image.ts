@@ -1,5 +1,39 @@
 import * as util from "./util.js";
 
+export interface CanvasFactory {
+  (): HTMLCanvasElement | OffscreenCanvas;
+}
+
+export const defaultCanvasFactory: CanvasFactory =
+  () => document.createElement("canvas");
+
+export class CropParmeters {
+  initCropRect(buffer: ImageBuffer) {
+    this._cropRect = [0, 0, buffer.width, buffer.height];
+  }
+
+  get cropRect(): number[] {
+    return this._cropRect!;
+  }
+
+  set cropRect(r: number[]) {
+    this._cropRect = r;
+    this._expandedRect = null;
+  }
+
+  get expandedRect(): number[] {
+    return this._expandedRect || this._cropRect!;
+  }
+
+  set expandedRect(r: number[]) {
+    this._expandedRect = r;
+  }
+
+
+  private _cropRect: number[] | null = null;
+  private _expandedRect: number[] | null = null;
+}
+
 export abstract class ImageBuffer {
   abstract get bytes(): DataView;
   abstract get width(): number;
@@ -9,7 +43,10 @@ export abstract class ImageBuffer {
   }
   abstract get pitch(): number;
   abstract toByteImageBuffer(): ByteImageBuffer;
-  abstract toCanvasImageBuffer(): CanvasImageBuffer;
+  toCanvasImageBuffer(canvasFactory: CanvasFactory = defaultCanvasFactory): CanvasImageBuffer {
+    return this._toCanvasImageBuffer(canvasFactory);
+  }
+  protected abstract _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer;
 }
 
 export class ByteImageBuffer extends ImageBuffer {
@@ -46,12 +83,12 @@ export class ByteImageBuffer extends ImageBuffer {
     return this;
   }
 
-  toCanvasImageBuffer(): CanvasImageBuffer {
-    const canvas = document.createElement("canvas");
+  _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer {
+    const canvas = canvasFactory();
     canvas.width = this._width;
     canvas.height = this._height;
     const bytes = this._bytes;
-    canvas.getContext("2d").putImageData(
+    canvas.getContext("2d")!.putImageData(
       new ImageData(util.toUint8ClampedArray(bytes), this._pitch >> 2, this._height),
       0, 0);
     return new CanvasImageBuffer(canvas);
@@ -64,10 +101,10 @@ export class ByteImageBuffer extends ImageBuffer {
 }
 
 export class CanvasImageBuffer extends ImageBuffer {
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement | OffscreenCanvas) {
     super();
     this._canvas = canvas;
-    this._context = canvas.getContext("2d");
+    this._context = canvas.getContext("2d")!;
   }
 
   get bytes(): DataView {
@@ -94,16 +131,16 @@ export class CanvasImageBuffer extends ImageBuffer {
     return new ByteImageBuffer(this.bytes, this.width, this.height, this.pitch);
   }
 
-  toCanvasImageBuffer(): CanvasImageBuffer {
+  _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer {
     return this;
   }
 
-  get canvas(): HTMLCanvasElement {
+  get canvas(): HTMLCanvasElement | OffscreenCanvas {
     return this._canvas;
   }
 
-  private _canvas: HTMLCanvasElement;
-  private _context: CanvasRenderingContext2D;
+  private _canvas: HTMLCanvasElement | OffscreenCanvas;
+  private _context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   private _data: ImageData;
   private _bytes: DataView;
 }

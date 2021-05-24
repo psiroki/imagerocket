@@ -4,6 +4,7 @@ import { processNodes } from "./processing/process_node.js";
 import { TopLeftSampler } from "./processing/samplers.js";
 
 import * as drop from "./ui/drop.js";
+import * as util from "./processing/util";
 
 const pasteTargets = new Set(["text", "number"]);
 
@@ -13,7 +14,7 @@ class ImageRocketApp {
   }
 
   run() {
-    const dropBox = this.root.querySelector(".dropBox");
+    const dropBox = this.root.querySelector(".dropBox")!;
     drop.dropHandler(dropBox, this.processBlob.bind(this));
     dropBox.addEventListener("paste", ((e: ClipboardEvent) => {
       let target = e.target as any;
@@ -21,7 +22,7 @@ class ImageRocketApp {
           pasteTargets.has(target.type.toLowerCase())) return;
       let items = e.clipboardData?.items;
       if (items) {
-        let stringItem: DataTransferItem = null;
+        let stringItem: DataTransferItem | null = null;
         for (let item of items) {
           if (item.kind === "file") {
             // file support is broken
@@ -53,7 +54,7 @@ class ImageRocketApp {
     let canvas = document.createElement("canvas");
     canvas.width = image.width;
     canvas.height = image.height;
-    let ctx = canvas.getContext("2d");
+    let ctx = canvas.getContext("2d")!;
     ctx.drawImage(image, 0, 0);
     let buffer: ImageBuffer = new CanvasImageBuffer(canvas);
     let simpleCropper = new SimpleCropper();
@@ -61,7 +62,7 @@ class ImageRocketApp {
     simpleCropper.expand = 4;
     console.log(processNodes.serializeNodes([simpleCropper]));
     buffer = await simpleCropper.processImage(buffer);
-    canvas = buffer.toCanvasImageBuffer().canvas;
+    canvas = util.toHtmlCanvas(buffer.toCanvasImageBuffer().canvas);
     let div = document.createElement("div");
     div.addEventListener("click", _ => div.remove());
     div.className = "result";
