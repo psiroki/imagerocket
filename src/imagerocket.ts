@@ -1,6 +1,6 @@
 import { SimpleCropper } from "./processing/croppers.js";
 import { CanvasImageBuffer, ImageBuffer } from "./processing/image.js";
-import { processNodes } from "./processing/process_node.js";
+import { ImageProcessingPipeline, processNodes } from "./processing/process_node.js";
 import { TopLeftSampler } from "./processing/samplers.js";
 
 import * as drop from "./ui/drop.js";
@@ -15,18 +15,28 @@ class ImageRocketApp {
 
   run() {
     const dropBox = this.root.querySelector(".dropBox")!;
+    const fileInput = dropBox.querySelector("input[type=file]") as HTMLInputElement;
+    if (fileInput) {
+      dropBox.addEventListener("dblclick", _ => {
+        fileInput.click();
+      });
+      fileInput.addEventListener("change", e => {
+        Array.from((e.currentTarget as any).files)
+          .forEach(blob => this.processBlob(blob as Blob));
+      });
+    }
     drop.dropHandler(dropBox, this.processBlob.bind(this));
     dropBox.addEventListener("paste", ((e: ClipboardEvent) => {
       let target = e.target as any;
       if (target.tagName?.toLowerCase() === "input" &&
-          pasteTargets.has(target.type.toLowerCase())) return;
+        pasteTargets.has(target.type.toLowerCase())) return;
       let items = e.clipboardData?.items;
       if (items) {
         let stringItem: DataTransferItem | null = null;
         for (let item of items) {
           if (item.kind === "file") {
             // file support is broken
-            console.log("File found: "+item.type, item);
+            console.log("File found: " + item.type, item);
             const m = /^image\/(svg)?/i.exec(item.type);
             if (m && !m[1]) {
               const f = item.getAsFile();
@@ -58,10 +68,11 @@ class ImageRocketApp {
     ctx.drawImage(image, 0, 0);
     let buffer: ImageBuffer = new CanvasImageBuffer(canvas);
     let simpleCropper = new SimpleCropper();
-    simpleCropper.borderColorSampler = new TopLeftSampler();
+    let sampler = new TopLeftSampler();
     simpleCropper.expand = 4;
-    console.log(processNodes.serializeNodes([simpleCropper]));
-    buffer = await simpleCropper.processImage(buffer);
+    let pipeline = new ImageProcessingPipeline([sampler, simpleCropper]);
+    console.log(processNodes.serializeNodes([pipeline]));
+    buffer = await pipeline.processImage(buffer);
     canvas = util.toHtmlCanvas(buffer.toCanvasImageBuffer().canvas);
     let div = document.createElement("div");
     div.addEventListener("click", _ => div.remove());

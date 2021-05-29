@@ -1,25 +1,23 @@
-import { ByteImageBuffer, ImageBuffer } from "./image.js";
-import { ProcessNode, processNodes } from "./process_node.js";
-import { Color, Sampler } from "./samplers.js";
+import { ByteImageBuffer, ImageBuffer, Color } from "./image.js";
+import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { Sampler } from "./samplers.js";
 import * as util from "./util.js";
 
-export class SimpleCropper extends ProcessNode {
+export class SimpleCropper extends ImageProcessingNode {
 
   serialize(): object {
     return {
-      "borderColorSampler": this.borderColorSampler,
       "expand": this.expand
     };
   }
 
   deserialize(obj: object): void {
-    this.borderColorSampler = obj["borderColorSampler"];
     this.expand = obj["expand"];
   }
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
     const expand = this.expand ?? 0;
-    const border = await this.borderColorSampler!.extractColor(buffer);
+    const border = buffer.cropParameters.borderColor;
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
     let rect = [0, 0, inputWidth, inputHeight];
@@ -145,7 +143,6 @@ export class SimpleCropper extends ProcessNode {
     return true;
   }
 
-  borderColorSampler: Sampler | null = null;
   expand: number = 0;
 }
 

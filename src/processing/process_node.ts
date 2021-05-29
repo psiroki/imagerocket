@@ -19,7 +19,7 @@ export abstract class ProcessNode {
   abstract deserialize(obj: object): void;
 }
 
-export abstract class ImageProcessingNode {
+export abstract class ImageProcessingNode extends ProcessNode {
   abstract processImage(buffer: ImageBuffer): Promise<ImageBuffer>;
 }
 
@@ -149,3 +149,31 @@ export class ProcessNodes {
 }
 
 export const processNodes = new ProcessNodes();
+
+export class ImageProcessingPipeline extends ImageProcessingNode {
+  constructor(nodes: ImageProcessingNode[]=[]) {
+    super();
+    this.nodes = nodes;
+  }
+
+  async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
+    for (let node of this.nodes) {
+      buffer = await node.processImage(buffer);
+    }
+    return buffer;
+  }
+
+  serialize(): object {
+    return { "pipeline": this.nodes };
+  }
+
+  deserialize(obj: object) {
+    this.nodes = obj["pipeline"] as ImageProcessingNode[];
+  }
+  
+  private nodes: ImageProcessingNode[];
+}
+
+ImageProcessingPipeline["className"] = "ImageProcessingPipeline";
+
+processNodes.addClass(ImageProcessingPipeline);

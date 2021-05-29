@@ -1,22 +1,16 @@
-import { ImageBuffer } from "./image.js";
-import { ProcessNode, processNodes } from "./process_node.js";
-
-/**
- * A 32 bit color value with alpha. Always in playform endianness
- * and pixel order.
- */
-export type Color = number;
-
-export const platformIsLittleEndian = (() => {
-  const test = new Uint32Array([0x12345678]);
-  return new DataView(test.buffer).getUint32(0, true) === 0x12345678;
-})();
+import { ImageBuffer, Color, platformIsLittleEndian } from "./image.js";
+import { ImageProcessingNode, processNodes } from "./process_node.js";
 
 /**
  * A sampler extracts a color from the image
  */
-export abstract class Sampler extends ProcessNode {
+export abstract class Sampler extends ImageProcessingNode {
   abstract extractColor(image: ImageBuffer): Promise<Color>;
+
+  async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
+    buffer.cropParameters.borderColor = await this.extractColor(buffer);
+    return buffer;
+  }
 }
 
 export class TopLeftSampler extends Sampler {
