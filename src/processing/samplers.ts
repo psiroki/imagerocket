@@ -1,4 +1,4 @@
-import { ImageBuffer, Color, platformIsLittleEndian } from "./image.js";
+import { ImageBuffer, Color, platformIsLittleEndian, formatColor } from "./image.js";
 import { ImageProcessingNode, processNodes } from "./process_node.js";
 
 /**
@@ -20,7 +20,8 @@ export class TopLeftSampler extends Sampler {
 
   extractColor(image: ImageBuffer): Promise<Color> {
     const bytes = image.toByteImageBuffer().bytes;
-    return Promise.resolve(<Color>bytes.getUint32(0, platformIsLittleEndian));
+    const color: Color = <Color>bytes.getUint32(0, platformIsLittleEndian);
+    return Promise.resolve(color);
   }
 
   serialize(): object {

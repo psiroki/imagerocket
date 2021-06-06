@@ -1,44 +1,24 @@
 import { ByteImageBuffer, ImageBuffer, Color } from "./image.js";
 import { ImageProcessingNode, processNodes } from "./process_node.js";
-import { Sampler } from "./samplers.js";
 import * as util from "./util.js";
 
-export class SimpleCropper extends ImageProcessingNode {
+export class BorderColorFiller extends ImageProcessingNode {
 
   serialize(): object {
-    return {
-      "expand": this.expand
-    };
+    return {};
   }
 
   deserialize(obj: object): void {
-    this.expand = obj["expand"];
   }
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
-    const expand = this.expand ?? 0;
+    buffer = buffer.toByteImageBuffer();
     const border = buffer.cropParameters.borderColor;
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
-    let rect = [0, 0, inputWidth, inputHeight];
-    for (let side = 0; side < 4; ++side) {
-      while (rect[side & 1] < rect[side & 1 | 2]) {
-        if (!this.allBorderColor(border, buffer, rect.map((e, i, a) => {
-          if ((i & 2) === (side & 2) || (i & 1) !== (side & 1)) {
-            return e;
-          }
-          return a[i^2] - (side & 2) + 1;
-        }))) break;
-        // step sides towards the center
-        rect[side] -= (side & 2) - 1;
-      }
-    }
-    const cropRect = Array.from(rect);
-    if (expand > 0) {
-      console.log("Crop rect before expansion: "+rect);
-      rect = cropRect.map((e, i) => e + ((i & 2) - 1)*expand);
-      console.log("Crop rect after expansion: "+rect);
-    }
+    const sourceWordPitch = buffer.wordPitch;
+    const sourceWords = util.toUint32Array(buffer.bytes);
+    let rect = buffer.cropParameters.expandedRect;
     // check for idempotent operation
     if ([0, 0, inputWidth, inputHeight].some((e, i) => rect[i] !== e)) {
       const cropLeft = rect[0];
@@ -49,6 +29,8 @@ export class SimpleCropper extends ImageProcessingNode {
       const resultHeight = cropBottom - cropTop;
         // there has been some clipping
       const result = ByteImageBuffer.allocate(resultWidth, resultHeight);
+      result.cropParameters = buffer.cropParameters;
+      result.cropParameters.initCropRect(result);
       const resultWords = util.toUint32Array(result.bytes);
       const wordPitch = result.wordPitch;
       // we lose pixels on the right if cropRight is less than the width of the image
@@ -59,8 +41,6 @@ export class SimpleCropper extends ImageProcessingNode {
       const keptHeight = (cropBottom < inputHeight ? cropBottom : inputHeight)
           // we also lose pixels is cropTop is positive
           - (cropTop > 0 ? cropTop : 0);
-      console.log("Width:", inputWidth, "kept:", keptWidth, "result:", resultWidth);
-      console.log("Height:", inputHeight, "kept:", keptHeight, "result:", resultHeight);
       // fill the top, if needed
       if (cropTop < 0) {
         resultWords.subarray(0, -cropTop * wordPitch).fill(border);
@@ -101,8 +81,6 @@ export class SimpleCropper extends ImageProcessingNode {
       const sy = cropTop > 0 ? cropTop : 0;
       const dx = cropLeft < 0 ? -cropLeft : 0;
       const dy = cropTop < 0 ? -cropTop : 0;
-      const sourceWords = util.toUint32Array(buffer.bytes);
-      const sourceWordPitch = buffer.wordPitch;
       let spos = sy * sourceWordPitch + sx;
       let dpos = dy * wordPitch + dx;
       // block transfer
@@ -118,34 +96,8 @@ export class SimpleCropper extends ImageProcessingNode {
       return buffer;
     }
   }
-
-  private allBorderColor(border: Color, buffer: ImageBuffer, rect: number[]) {
-    if (rect[0] >= rect[2] || rect[1] >= rect[3]) return false;
-    const left = rect[0];
-    const top = rect[1];
-    const right = rect[2];
-    const bottom = rect[3];
-    const words = util.toUint32Array(buffer.bytes);
-    const wordPitch = buffer.wordPitch;
-    let pos = left + top * wordPitch;
-    let rowStep = wordPitch - (right - left);
-    for (let y = top; y < bottom; ++y) {
-      for (let x = left; x < right; ++x) {
-        // TODO: we don't care if fully transparent pixels
-        // would be red or green, maybe premultiply colors?
-        if (border !== words[pos]) {
-          return false;
-        }
-        ++pos;
-      }
-      pos += rowStep;
-    }
-    return true;
-  }
-
-  expand: number = 0;
 }
 
-SimpleCropper["className"] = "SimpleCropper";
+BorderColorFiller["className"] = "BorderColorFiller";
 
-processNodes.addClass(SimpleCropper);
+processNodes.addClass(BorderColorFiller);

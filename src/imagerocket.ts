@@ -1,10 +1,12 @@
-import { SimpleCropper } from "./processing/croppers.js";
+import { SimpleCropDetector } from "./processing/simple_crop_detector.js";
 import { CanvasImageBuffer, ImageBuffer } from "./processing/image.js";
 import { ImageProcessingPipeline, processNodes } from "./processing/process_node.js";
 import { TopLeftSampler } from "./processing/samplers.js";
 
 import * as drop from "./ui/drop.js";
 import * as util from "./processing/util.js";
+import { SimpleExpander } from "./processing/expanders.js";
+import { BorderColorFiller } from "./processing/crop_filler.js";
 
 const pasteTargets = new Set(["text", "number"]);
 
@@ -67,10 +69,12 @@ class ImageRocketApp {
     let ctx = canvas.getContext("2d")!;
     ctx.drawImage(image, 0, 0);
     let buffer: ImageBuffer = new CanvasImageBuffer(canvas);
-    let simpleCropper = new SimpleCropper();
     let sampler = new TopLeftSampler();
-    simpleCropper.expand = 4;
-    let pipeline = new ImageProcessingPipeline([sampler, simpleCropper]);
+    let detector = new SimpleCropDetector();
+    let expander = new SimpleExpander();
+    expander.expand = 4;
+    let filler = new BorderColorFiller();
+    let pipeline = new ImageProcessingPipeline([sampler, detector, expander, filler]);
     console.log(processNodes.serializeNodes([pipeline]));
     buffer = await pipeline.processImage(buffer);
     canvas = util.toHtmlCanvas(buffer.toCanvasImageBuffer().canvas);
