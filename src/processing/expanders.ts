@@ -1,4 +1,4 @@
-import { ByteImageBuffer, ImageBuffer, Color } from "./image.js";
+import { ImageBuffer } from "./image.js";
 import { ImageProcessingNode, processNodes } from "./process_node.js";
 import * as util from "./util.js";
 

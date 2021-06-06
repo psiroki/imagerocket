@@ -257,7 +257,18 @@ export class CanvasImageBuffer extends ImageBuffer {
   }
 
   _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer {
-    return this;
+    const newCanvas = canvasFactory();
+    if (newCanvas instanceof HTMLCanvasElement === this._canvas instanceof HTMLCanvasElement) {
+      return this;
+    } else {
+      newCanvas.width = this._canvas.width;
+      newCanvas.height = this._canvas.height;
+      newCanvas.getContext("2d")!.drawImage(this._canvas,
+        0, 0);
+      const buffer = new CanvasImageBuffer(newCanvas);
+      buffer.cropParameters = this.cropParameters;
+      return buffer;
+    }
   }
 
   get canvas(): HTMLCanvasElement | OffscreenCanvas {
