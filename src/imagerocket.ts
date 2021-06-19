@@ -72,7 +72,7 @@ class ImageRocketApp {
     let sampler = new TopLeftSampler();
     let detector = new SimpleCropDetector();
     let expander = new SimpleExpander();
-    expander.expand = 4;
+    expander.expandBy = 4;
     let filler = new BorderColorFiller();
     let pipeline = new ImageProcessingPipeline([sampler, detector, expander, filler]);
     console.log(processNodes.serializeNodes([pipeline]));

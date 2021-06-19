@@ -1,4 +1,5 @@
 import { ImageBuffer } from "./image.js";
+import { ModelBridge } from "../ui/model_bridge.js";
 
 export abstract class ProcessNode {
   /**
@@ -21,6 +22,9 @@ export abstract class ProcessNode {
 
 export abstract class ImageProcessingNode extends ProcessNode {
   abstract processImage(buffer: ImageBuffer): Promise<ImageBuffer>;
+  get modelBridge(): ModelBridge | null {
+    return null;
+  }
 }
 
 export interface ProcessNodeConstructor {

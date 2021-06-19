@@ -1,10 +1,16 @@
-import { ImageBuffer, Color, platformIsLittleEndian, formatColor } from "./image.js";
+import { ModelBridge } from "../ui/model_bridge.js";
+import {
+  ImageBuffer,
+  Color,
+  platformIsLittleEndian,
+  formatColor,
+} from "./image.js";
 import { ImageProcessingNode, processNodes } from "./process_node.js";
 
 /**
  * A sampler extracts a color from the image
  */
-export abstract class Sampler extends ImageProcessingNode {
+export abstract class BorderColorSampler extends ImageProcessingNode {
   abstract extractColor(image: ImageBuffer): Promise<Color>;
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
@@ -13,14 +19,15 @@ export abstract class Sampler extends ImageProcessingNode {
   }
 }
 
-export class TopLeftSampler extends Sampler {
-  constructor(ignored={}) {
+export class TopLeftSampler extends BorderColorSampler {
+  constructor() {
     super();
   }
 
   extractColor(image: ImageBuffer): Promise<Color> {
     const bytes = image.toByteImageBuffer().bytes;
     const color: Color = <Color>bytes.getUint32(0, platformIsLittleEndian);
+    this.modelBridge.pair.model["lastColor"] = color;
     return Promise.resolve(color);
   }
 
@@ -31,6 +38,24 @@ export class TopLeftSampler extends Sampler {
   deserialize(obj: object) {
     // nothing to do
   }
+
+  get modelBridge(): ModelBridge {
+    if (!this.bridge) {
+      this.bridge = new ModelBridge(
+        { lastColor: null },
+        {
+          lastColor: {
+            _type: "color?",
+            _label: "Last border color",
+            _readOnly: true,
+          },
+        }
+      );
+    }
+    return this.bridge.pair;
+  }
+
+  private bridge?: ModelBridge;
 }
 
 TopLeftSampler["className"] = "TopLeftSampler";
