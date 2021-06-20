@@ -67,6 +67,7 @@ body {
   flex-direction: column;
   margin: 8px;
   font-size: 11.5pt;
+  max-width: 640px;
 }
 
 .processNode > .title {
