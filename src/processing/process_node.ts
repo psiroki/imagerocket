@@ -39,7 +39,7 @@ class ProcessNodeSerializer {
   addNode(node: ProcessNode): string {
     let id = this.ids.get(node);
     if (!id) {
-      let className = this.service.className(node.constructor as ProcessNodeConstructor);
+      let className = this.service.classNameFromInstance(node);
       let index = (this.counter.get(className) ?? 0) + 1;
       id = className+index;
       this.ids.set(node, id);
@@ -138,6 +138,10 @@ export class ProcessNodes {
 
   deserializeNodes(serializedNodes: object[]): ProcessNode[] {
     return new ProcessNodeDeserializer(this).deserialize(serializedNodes);
+  }
+
+  classNameFromInstance(instance: ProcessNode): string {
+    return this.className(instance.constructor as ProcessNodeConstructor);
   }
 
   className(classFunction: ProcessNodeConstructor): string {

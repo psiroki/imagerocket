@@ -61,25 +61,25 @@ export const extractRed = (() => {
   // Rgba or abgR
   return colorMask.red === 0xff
     ? (val: number) => val & 0xff
-    : (val: number) => val >> 24 & 0xff;
+    : (val: number) => val >>> 24 & 0xff;
 })();
 export const extractGreen = (() => {
   // rGba or abGr
   return colorMask.green === 0xff00
-    ? (val: number) => val >> 8 & 0xff
-    : (val: number) => val >> 16 & 0xff;
+    ? (val: number) => val >>> 8 & 0xff
+    : (val: number) => val >>> 16 & 0xff;
 })();
 export const extractBlue = (() => {
   // rgBa or aBgr
   return colorMask.blue === 0xff00
-    ? (val: number) => val >> 8 & 0xff
-    : (val: number) => val >> 16 & 0xff;
+    ? (val: number) => val >>> 8 & 0xff
+    : (val: number) => val >>> 16 & 0xff;
 })();
 export const extractAlpha = (() => {
   // rgbA or Abgr
   return colorMask.alpha === 0xff
     ? (val: number) => val & 0xff
-    : (val: number) => val >> 24 & 0xff;
+    : (val: number) => val >>> 24 & 0xff;
 })();
 
 export const platformIsLittleEndian = (() => {
@@ -105,7 +105,7 @@ export class CropParameters {
     if (copyFrom) {
       this._cropRect = copyFrom._cropRect ? Array.from(copyFrom._cropRect) : null;
       this._expandedRect = copyFrom._expandedRect ? Array.from(copyFrom._expandedRect) : null;
-      this.borderColor = copyFrom.borderColor;
+      this.color = copyFrom.color;
     }
   }
 
@@ -133,10 +133,10 @@ export class CropParameters {
   }
 
   toString(): string {
-    return [formatColor(this.borderColor), this._cropRect, this.expandedRect].join("; ");
+    return [formatColor(this.color), this._cropRect, this.expandedRect].join("; ");
   }
   
-  borderColor: Color = colorMask.alpha; // opaque black
+  color: Color = colorMask.alpha; // opaque black
 
   private _cropRect: number[] | null = null;
   private _expandedRect: number[] | null = null;

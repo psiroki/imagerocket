@@ -13,7 +13,7 @@ export class SimpleCropDetector extends ImageProcessingNode {
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
     buffer = buffer.toByteImageBuffer();
-    const border = buffer.cropParameters.borderColor;
+    const border = buffer.cropParameters.color;
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
     let rect = [0, 0, inputWidth, inputHeight];

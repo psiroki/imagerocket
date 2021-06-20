@@ -38,9 +38,13 @@ export class ModelBridge implements UpdateObserver {
         inputObserver: this.outputObserver,
         outputObserver: this.inputObserver,
       });
-      this._pair = this;
+      this._pair._pair = this;
     }
     return this._pair;
+  }
+
+  toString(): string {
+    return "ModelBridge("+[this.inputObserver.id, this.outputObserver.id]+")";
   }
 
   readonly rawModel: any;
@@ -65,6 +69,10 @@ export class ModelObserver implements UpdateObserver {
     handlers.add(handler);
   }
 
+  get rawModel(): any {
+    return this.instance;
+  }
+
   private setHandler(
     target: any,
     prop: string,
@@ -72,8 +80,10 @@ export class ModelObserver implements UpdateObserver {
     receiver: any
   ): boolean {
     target[prop] = value;
-    this.pendingChanges.add(prop);
-    queueMicrotask(this.flush.bind(this));
+    if (this.handlers.has(prop)) {
+      this.pendingChanges.add(prop);
+      queueMicrotask(this.flush.bind(this));
+    }
     return true;
   }
 
@@ -95,4 +105,7 @@ export class ModelObserver implements UpdateObserver {
   private instance: any;
   private schema: any;
   private handlers: Map<string, Set<UpdateHandler>> = new Map();
+  readonly id: number = ModelObserver.idCounter++;
+
+  static idCounter: number = 0;
 }

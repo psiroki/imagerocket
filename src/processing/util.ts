@@ -26,3 +26,32 @@ export function toHtmlCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): HTMLC
     return result;
   }
 }
+
+export interface Listener<T> {
+  (obj: T): void;
+}
+
+export interface Subscription {
+  cancel(): void;
+}
+
+export class AsyncStream<T> {
+  add(obj: T): void {
+    const actual = Array.from(this.listeners);
+    for (let fun of actual) {
+      queueMicrotask(() => fun(obj));
+    }
+  }
+
+  listen(listener: Listener<T>): Subscription {
+    const listeners = this.listeners;
+    listeners.add(listener);
+    return {
+      cancel() {
+        listeners.delete(listener);
+      }
+    };
+  }
+
+  private listeners: Set<Listener<T>> = new Set();
+}

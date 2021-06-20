@@ -5,7 +5,7 @@ import { ImageProcessingNode, processNodes } from "./process_node.js";
 export class SimpleExpander extends ImageProcessingNode {
   serialize(): object {
     return {
-      expand: this.expand,
+      "expand": this.expand,
     };
   }
 
@@ -15,16 +15,25 @@ export class SimpleExpander extends ImageProcessingNode {
 
   get modelBridge(): ModelBridge {
     if (!this.bridge) {
-      this.bridge = new ModelBridge({ expand: this.expand }, {
-        "expand": {
-          "_type": "exponentialSlider",
-          "_label": "Border width",
-          "expOffset": 1,
-          "minValue": 0,
-          "maxValue": 64
+      this.bridge = new ModelBridge(
+        { "expand": this.expand },
+        {
+          "properties": [
+            {
+              "name": "expand",
+              "editor": "exponentialSlider",
+              "label": "Border width",
+              "expOffset": 1,
+              "expMin": 0,
+              "expMax": 64,
+            },
+          ],
         }
-      });
-      this.bridge.addHandler("expand", (target, prop) => this.expand = target[prop]);
+      );
+      this.bridge.addHandler(
+        "expand",
+        (target, prop) => (this.expand = target[prop])
+      );
     }
     return this.bridge.pair;
   }

@@ -13,7 +13,7 @@ export class BorderColorFiller extends ImageProcessingNode {
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
     buffer = buffer.toByteImageBuffer();
-    const border = buffer.cropParameters.borderColor;
+    const border = buffer.cropParameters.color;
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
     const sourceWordPitch = buffer.wordPitch;
