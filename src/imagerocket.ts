@@ -54,6 +54,14 @@ class ImageRocketApp {
       });
     }
     drop.dropHandler(dropBox, this.processBlob.bind(this));
+    // dropping a file anywhere else is probably an accident,
+    // prevent the browser from navigating away
+    for (let eventName of ["drop", "dragover"]) {
+      document.body.addEventListener(eventName, event => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+    }
     dropBox.addEventListener("paste", ((e: ClipboardEvent) => {
       let target = e.target as any;
       if (

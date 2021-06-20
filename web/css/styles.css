@@ -19,9 +19,9 @@ body {
   pointer-events: none;
   text-align: center;
 }
-.dropShade::before { content: 'You can drop the file here'; }
+.dragOver > .dropShade::before { content: 'You can drop the file here'; }
 .dropShade.faded::before { opacity: 0.25; }
-.dragOver .dropShade { display: flex; }
+.dragOver > .dropShade { display: flex; }
 
 .dropBox {
   position: relative;

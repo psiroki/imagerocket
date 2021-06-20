@@ -214,6 +214,7 @@ export class PropertySheet {
   createNumberEditor(item: any, forceInteger: boolean): Element {
     const container = document.createElement("span");
     container.classList.add("numberEditor");
+    const optional = item["_internal"]["optional"];
     const name = item["name"];
     const min = item["min"];
     const max = item["max"];
@@ -236,9 +237,12 @@ export class PropertySheet {
     updateControls(this.model, name);
 
     numberInput.addEventListener("input", event => {
-      let val = +numberInput.value;
-      if (isNaN(val)) val = 0;
-      if (forceInteger) val = Math.round(val);
+      let val: number | null = +numberInput.value;
+      if (isNaN(val)) {
+        val = optional ? null : 0;
+      } else if (forceInteger) {
+        val = Math.round(val);
+      }
       this.bridge.model[name] = val;
     });
 

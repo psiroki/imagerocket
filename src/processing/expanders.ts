@@ -4,16 +4,19 @@ import { ImageProcessingNode, processNodes } from "./process_node.js";
 
 export class SimpleExpander extends ImageProcessingNode {
   serialize(): object {
-    return {
-      "expand": this.expand,
-    };
+    return this.ownBridge.exportModel();
   }
 
   deserialize(obj: object): void {
     this.expand = obj["expand"];
+    this.ownBridge.patchModel(obj);
   }
 
   get modelBridge(): ModelBridge {
+    return this.ownBridge.pair;
+  }
+
+  get ownBridge(): ModelBridge {
     if (!this.bridge) {
       this.bridge = new ModelBridge(
         { "expand": this.expand },
@@ -35,7 +38,7 @@ export class SimpleExpander extends ImageProcessingNode {
         (target, prop) => (this.expand = target[prop])
       );
     }
-    return this.bridge.pair;
+    return this.bridge;
   }
 
   get expandBy(): number {
