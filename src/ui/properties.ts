@@ -1,5 +1,5 @@
 import { Color, extractAlpha, formatColor } from "../processing/image.js";
-import { AsyncStream } from "../processing/util.js";
+import { AsyncStream, replaceUndefined } from "../processing/util.js";
 import { ModelBridge } from "./model_bridge.js";
 import { cloneTemplate } from "./templates.js";
 
@@ -52,14 +52,17 @@ class ExponentialMapper {
       (mappedMax - mappedMin);
   }
 
-  bindBidirectional(exp: HTMLInputElement, real: HTMLInputElement): AsyncStream<number> {
+  bindBidirectional(
+    exp: HTMLInputElement,
+    real: HTMLInputElement
+  ): AsyncStream<number> {
     const result = new AsyncStream<number>();
-    bindValues(exp, real, s => {
+    bindValues(exp, real, (s) => {
       const real = this.mapToReal(+s);
       result.add(real);
       return real.toString();
     });
-    bindValues(real, exp, s => {
+    bindValues(real, exp, (s) => {
       const real = +s;
       result.add(real);
       return this.mapToExp(real).toString();
@@ -99,7 +102,8 @@ export class PropertySheet {
     for (let item of schema["properties"]) {
       const itemElement = cloneTemplate("propertySheetItem")!;
       this.sheetElement.appendChild(itemElement);
-      itemElement.querySelector(".propertyName")!.textContent = item["name"];
+      itemElement.querySelector(".propertyName")!.textContent =
+        item["label"] || item["name"];
       const valueElement = itemElement.querySelector(".propertyValue")!;
       const editor = item["editor"];
       const rawEditor = editor.replace(optionalPattern, "");
@@ -107,14 +111,22 @@ export class PropertySheet {
         "optional": optionalPattern.test(editor),
         "rawEditor": rawEditor,
       };
+      let elements: DocumentFragment | Element | null = null;
       switch (rawEditor) {
         case "color":
-          valueElement.appendChild(this.createColorEditor(item));
+          elements = this.createColorEditor(item);
           break;
         case "exponentialSlider":
-          valueElement.appendChild(this.createExponentialSlider(item));
+          elements = this.createExponentialSlider(item);
+          break;
+        case "int":
+          elements = this.createNumberEditor(item, true);
+          break;
+        case "double":
+          elements = this.createNumberEditor(item, false);
           break;
       }
+      if (elements) valueElement.appendChild(elements);
     }
   }
 
@@ -122,12 +134,10 @@ export class PropertySheet {
     return this.sheetElement;
   }
 
-  createColorEditor(item: any): DocumentFragment {
-    const result = new DocumentFragment();
+  createColorEditor(item: any): Element {
     const container = document.createElement("span");
     container.classList.add("colorEditor");
     const name = item["name"];
-    result.appendChild(container);
     const colorInput = document.createElement("input");
     container.appendChild(colorInput);
     colorInput.type = "color";
@@ -149,11 +159,10 @@ export class PropertySheet {
     this.bridge.addHandler(name, sync);
     sync(this.model, name);
 
-    return result;
+    return container;
   }
 
-  createExponentialSlider(item: any): DocumentFragment {
-    const result = new DocumentFragment();
+  createExponentialSlider(item: any): Element {
     const container = document.createElement("span");
     container.classList.add("exponentialSlider");
     const name = item["name"];
@@ -168,7 +177,6 @@ export class PropertySheet {
       mappedMax: 4096,
     };
     const mapper = new ExponentialMapper(mapping);
-    result.appendChild(container);
 
     const rangeInput = document.createElement("input");
     container.appendChild(rangeInput);
@@ -193,11 +201,45 @@ export class PropertySheet {
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
 
-    mapper.bindBidirectional(rangeInput, numberInput).listen(val => {
-      this.bridge.model[name] = isNaN(val) ? 0 : val;
+    mapper.bindBidirectional(rangeInput, numberInput).listen((val) => {
+      this.bridge.model[name] = isNaN(val) ? 0 : Math.round(val);
     });
 
-    return result;
+    return container;
+  }
+
+  createNumberEditor(item: any, forceInteger: boolean): Element {
+    const container = document.createElement("span");
+    container.classList.add("exponentialSlider");
+    const name = item["name"];
+    const min = item["min"];
+    const max = item["max"];
+    const step = item["step"];
+
+    const numberInput = document.createElement("input");
+    container.appendChild(numberInput);
+    numberInput.type = "number";
+    if (typeof min === "number") numberInput.min = min.toString();
+    if (typeof max === "number") numberInput.max = max.toString();
+    if (typeof step === "number") numberInput.step = step.toString();
+    numberInput.disabled = !!item["readOnly"];
+
+    const updateControls = (target: any, prop: string): void => {
+      const val = target[prop] as number;
+      numberInput.value = replaceUndefined(val, "").toString();
+    };
+
+    this.bridge.addHandler(name, updateControls);
+    updateControls(this.model, name);
+
+    numberInput.addEventListener("input", (event) => {
+      let val = +numberInput.value;
+      if (isNaN(val)) val = 0;
+      if (forceInteger) val = Math.round(val);
+      this.bridge.model[name] = val;
+    });
+
+    return container;
   }
 
   private readonly bridge: ModelBridge;

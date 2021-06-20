@@ -4,7 +4,7 @@ import {
   ImageProcessingPipeline,
   processNodes,
 } from "./processing/process_node.js";
-import { TopLeftSampler } from "./processing/samplers.js";
+import { PointSampler } from "./processing/samplers.js";
 
 import * as drop from "./ui/drop.js";
 import * as util from "./processing/util.js";
@@ -18,7 +18,7 @@ const pasteTargets = new Set(["text", "number"]);
 class ImageRocketApp {
   constructor(root: Element) {
     this.root = root;
-    let sampler = new TopLeftSampler();
+    let sampler = new PointSampler();
     let detector = new SimpleCropDetector();
     let expander = new SimpleExpander();
     expander.expandBy = 4;

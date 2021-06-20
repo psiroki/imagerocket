@@ -65,6 +65,9 @@ class ProcessNodeSerializer {
         e[1] = this.findReferences(node, e[1]);
         return e;
       }));
+    } else if (typeof value === "undefined") {
+      // undefined is mapped to null
+      return null;
     } else if (typeof value !== "boolean" &&
       typeof value !== "string" &&
       typeof value !== "number" &&

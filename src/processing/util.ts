@@ -27,6 +27,14 @@ export function toHtmlCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): HTMLC
   }
 }
 
+export function replaceUndefined(val: any, replacement: any): any {
+  return typeof val === "undefined" ? replacement : val;
+}
+
+export function clamp(val: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, val));
+}
+
 export interface Listener<T> {
   (obj: T): void;
 }

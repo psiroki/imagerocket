@@ -32,6 +32,23 @@ export class ModelBridge implements UpdateObserver {
     return this.outputObserver.model;
   }
 
+  exportModel(names: string[]): object {
+    const result = {};
+    const rawModel = this.rawModel;
+    for (let name of names) {
+      result[name] = rawModel[name];
+    }
+    return result;
+  }
+
+  patchModel(patch: object, restrictToKeys: string[]|null=null): void {
+    const target = this.model;
+    const keys = restrictToKeys || Object.keys(patch);
+    for (let key of keys) {
+      target[key] = patch[key];
+    }
+  }
+
   get pair(): ModelBridge {
     if (!this._pair) {
       this._pair = new ModelBridge(this.model, this.schema, {
