@@ -1,18 +1,43 @@
-import { ByteImageBuffer, ImageBuffer, Color } from "./image.js";
+import { ModelBridge } from "../ui/model_bridge.js";
+import { ByteImageBuffer, ImageBuffer, Color, CropParameters } from "./image.js";
 import { ImageProcessingNode, processNodes } from "./process_node.js";
 import * as util from "./util.js";
 
 export class BorderColorFiller extends ImageProcessingNode {
-
   serialize(): object {
-    return {};
+    return this.ownBridge.exportModel();
   }
 
   deserialize(obj: object): void {
+    this.ownBridge.patchModel(obj);
+  }
+
+  get modelBridge(): ModelBridge {
+    return this.ownBridge.pair;
+  }
+
+  get ownBridge(): ModelBridge {
+    if (!this.bridge) {
+      this.bridge = new ModelBridge(
+        { "preserve": true },
+        {
+          "properties": [
+            {
+              "name": "preserve",
+              "editor": "boolean",
+              "label": "Preserve existing border",
+            },
+          ],
+        }
+      );
+    }
+    return this.bridge;
   }
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
     buffer = buffer.toByteImageBuffer();
+    const preserve = this.ownBridge.model["preserve"];
+    if (!preserve) buffer = this.logicalCrop(buffer as ByteImageBuffer);
     const border = buffer.cropParameters.color;
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
@@ -27,20 +52,22 @@ export class BorderColorFiller extends ImageProcessingNode {
       const cropBottom = rect[3];
       const resultWidth = cropRight - cropLeft;
       const resultHeight = cropBottom - cropTop;
-        // there has been some clipping
+      // there has been some clipping
       const result = ByteImageBuffer.allocate(resultWidth, resultHeight);
       result.cropParameters = buffer.cropParameters;
       result.cropParameters.initCropRect(result);
       const resultWords = util.toUint32Array(result.bytes);
       const wordPitch = result.wordPitch;
       // we lose pixels on the right if cropRight is less than the width of the image
-      const keptWidth = (cropRight < inputWidth ? cropRight : inputWidth)
-          // we also lose pixels is cropLeft is positive
-          - (cropLeft > 0 ? cropLeft : 0);
+      const keptWidth =
+        (cropRight < inputWidth ? cropRight : inputWidth) -
+        // we also lose pixels is cropLeft is positive
+        (cropLeft > 0 ? cropLeft : 0);
       // we lose pixels at the bottom if cropBottom is less than the height of the image
-      const keptHeight = (cropBottom < inputHeight ? cropBottom : inputHeight)
-          // we also lose pixels is cropTop is positive
-          - (cropTop > 0 ? cropTop : 0);
+      const keptHeight =
+        (cropBottom < inputHeight ? cropBottom : inputHeight) -
+        // we also lose pixels is cropTop is positive
+        (cropTop > 0 ? cropTop : 0);
       // fill the top, if needed
       if (cropTop < 0) {
         resultWords.subarray(0, -cropTop * wordPitch).fill(border);
@@ -49,7 +76,9 @@ export class BorderColorFiller extends ImageProcessingNode {
       if (cropBottom > inputHeight) {
         const fillHeight = cropBottom - inputHeight;
         const fillStart = resultHeight - fillHeight;
-        resultWords.subarray(fillStart * wordPitch, (fillStart + fillHeight) * wordPitch).fill(border);
+        resultWords
+          .subarray(fillStart * wordPitch, (fillStart + fillHeight) * wordPitch)
+          .fill(border);
       }
       // fill the left, if needed
       if (cropLeft < 0) {
@@ -96,6 +125,36 @@ export class BorderColorFiller extends ImageProcessingNode {
       return buffer;
     }
   }
+
+  logicalCrop(buffer: ByteImageBuffer): ByteImageBuffer {
+    const cropRect = buffer.cropParameters.cropRect;
+    const byteOffset = cropRect[0] * 4 + buffer.pitch * cropRect[1];
+    const newWidth = cropRect[2] - cropRect[0];
+    const newHeight = cropRect[3] - cropRect[1];
+    const bytes = buffer.bytes;
+    const result = new ByteImageBuffer(
+      new DataView(
+        bytes.buffer,
+        bytes.byteOffset + byteOffset,
+        buffer.pitch * newHeight
+      ),
+      newWidth,
+      newHeight,
+      buffer.pitch
+    );
+    const newCrop = new CropParameters(buffer.cropParameters);
+    const expRect = newCrop.expandedRect;
+    const newCropRect = newCrop.cropRect;
+    // the origin has changed
+    for (let i = 0; i < 4; ++i) {
+      expRect[i] -= cropRect[i&1];
+      newCropRect[i] -= cropRect[i&1];
+    }
+    result.cropParameters = newCrop;
+    return result;
+  }
+
+  private bridge?: ModelBridge;
 }
 
 BorderColorFiller["className"] = "BorderColorFiller";

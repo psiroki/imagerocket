@@ -33,7 +33,7 @@ export class SimpleCropDetector extends ImageProcessingNode {
     return buffer
   }
 
-  private allBorderColor(border: Color, buffer: ImageBuffer, rect: number[]) {
+  private allBorderColor(border: Color, buffer: ImageBuffer, rect: number[]): boolean {
     if (rect[0] >= rect[2] || rect[1] >= rect[3]) return false;
     const left = rect[0];
     const top = rect[1];

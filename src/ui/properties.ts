@@ -125,7 +125,10 @@ export class PropertySheet {
         case "double":
           elements = this.createNumberEditor(item, false);
           break;
-      }
+        case "boolean":
+          elements = this.createBooleanEditor(item);
+          break;
+        }
       if (elements) valueElement.appendChild(elements);
     }
   }
@@ -210,7 +213,7 @@ export class PropertySheet {
 
   createNumberEditor(item: any, forceInteger: boolean): Element {
     const container = document.createElement("span");
-    container.classList.add("exponentialSlider");
+    container.classList.add("numberEditor");
     const name = item["name"];
     const min = item["min"];
     const max = item["max"];
@@ -232,10 +235,36 @@ export class PropertySheet {
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
 
-    numberInput.addEventListener("input", (event) => {
+    numberInput.addEventListener("input", event => {
       let val = +numberInput.value;
       if (isNaN(val)) val = 0;
       if (forceInteger) val = Math.round(val);
+      this.bridge.model[name] = val;
+    });
+
+    return container;
+  }
+
+  createBooleanEditor(item: any): Element {
+    const container = document.createElement("span");
+    container.classList.add("booleanEditor");
+    const name = item["name"];
+
+    const checkbox = document.createElement("input");
+    container.appendChild(checkbox);
+    checkbox.type = "checkbox";
+    checkbox.disabled = !!item["readOnly"];
+
+    const updateControls = (target: any, prop: string): void => {
+      const val = target[prop];
+      checkbox.checked = !!val;
+    };
+
+    this.bridge.addHandler(name, updateControls);
+    updateControls(this.model, name);
+
+    checkbox.addEventListener("input", event => {
+      let val = checkbox.checked;
       this.bridge.model[name] = val;
     });
 

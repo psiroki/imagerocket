@@ -20,18 +20,11 @@ function actualOffset(val: number | null | undefined, max: number) {
 }
 
 export class PointSampler extends BorderColorSampler {
-  private static readonly parameterProperties = [
-    "normalizedX",
-    "normalizedY",
-    "pixelX",
-    "pixelY",
-  ];
-
   constructor() {
     super();
     const model = this.ownBridge.model;
-    for (let key of PointSampler.parameterProperties) {
-      model[key] = 0;
+    for (let name of this.ownBridge.serializableNames) {
+      model[name] = 0;
     }
   }
 
@@ -56,11 +49,11 @@ export class PointSampler extends BorderColorSampler {
   }
 
   serialize(): object {
-    return this.ownBridge.exportModel(PointSampler.parameterProperties);
+    return this.ownBridge.exportModel();
   }
 
   deserialize(obj: object) {
-    this.ownBridge.patchModel(obj, PointSampler.parameterProperties);
+    this.ownBridge.patchModel(obj);
   }
 
   get modelBridge(): ModelBridge {
@@ -104,18 +97,21 @@ export class PointSampler extends BorderColorSampler {
               "editor": "int?",
               "label": "Last X",
               "readOnly": true,
+              "serializable": false,
             },
             {
               "name": "lastY",
               "editor": "int?",
               "label": "Last Y",
               "readOnly": true,
+              "serializable": false,
             },
             {
               "name": "lastColor",
               "editor": "color?",
               "label": "Last border color",
               "readOnly": true,
+              "serializable": false,
               "alpha": true,
             },
           ],

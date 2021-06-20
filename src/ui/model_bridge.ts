@@ -1,3 +1,5 @@
+import { replaceUndefined } from "../processing/util.js";
+
 export interface UpdateObserver {
   addHandler(prop: string, handler: UpdateHandler): void;
 }
@@ -32,20 +34,32 @@ export class ModelBridge implements UpdateObserver {
     return this.outputObserver.model;
   }
 
-  exportModel(names: string[]): object {
+  exportModel(names: string[] | null = null): object {
     const result = {};
     const rawModel = this.rawModel;
-    for (let name of names) {
+    const effectiveNames = names || this.serializableNames;
+    for (let name of effectiveNames) {
       result[name] = rawModel[name];
     }
     return result;
   }
 
-  patchModel(patch: object, restrictToKeys: string[]|null=null): void {
+  patchModel(patch: object, names: string[] | null = null): void {
     const target = this.model;
-    const keys = restrictToKeys || Object.keys(patch);
+    const keys = names || this.serializableNames;
     for (let key of keys) {
       target[key] = patch[key];
+    }
+  }
+
+  get serializableNames(): string[] {
+    const properties = this.schema["properties"];
+    if (properties instanceof Array) {
+      return properties
+        .filter((e) => replaceUndefined(e["serializable"], true))
+        .map((e) => e["name"]);
+    } else {
+      return [];
     }
   }
 
@@ -61,7 +75,9 @@ export class ModelBridge implements UpdateObserver {
   }
 
   toString(): string {
-    return "ModelBridge("+[this.inputObserver.id, this.outputObserver.id]+")";
+    return (
+      "ModelBridge(" + [this.inputObserver.id, this.outputObserver.id] + ")"
+    );
   }
 
   readonly rawModel: any;
