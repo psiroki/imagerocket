@@ -26,6 +26,7 @@ body {
 .dropBox {
   position: relative;
   cursor: pointer;
+  user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,6 +125,7 @@ body {
 
 .colorEditor {
   display: flex;
+  align-items: center;
 }
 
 .colorEditor > input[type=range] {
