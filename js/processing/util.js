@@ -23,6 +23,9 @@ export function toHtmlCanvas(canvas) {
 export function replaceUndefined(val, replacement) {
     return typeof val === "undefined" ? replacement : val;
 }
+export function isNullish(val) {
+    return typeof val === "undefined" || val === null;
+}
 export function clamp(val, min, max) {
     return Math.max(min, Math.min(max, val));
 }
@@ -44,5 +47,16 @@ export class AsyncStream {
                 listeners.delete(listener);
             }
         };
+    }
+}
+export class Optional {
+    constructor(value, absent = false) {
+        this.valueOrNull = absent ? null : value;
+        this.absent = absent;
+    }
+    get value() {
+        if (this.absent)
+            throw new TypeError("Optional value is absent");
+        return this.valueOrNull;
     }
 }

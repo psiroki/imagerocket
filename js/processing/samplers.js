@@ -1,12 +1,22 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageProcessingNode, processNodes } from "./process_node.js";
-import { clamp, toUint32Array } from "./util.js";
+import { clamp, isNullish, Optional, toUint32Array } from "./util.js";
 /**
  * A sampler extracts a color from the image
  */
 export class BorderColorSampler extends ImageProcessingNode {
     async processImage(buffer) {
-        buffer.cropParameters.color = await this.extractColor(buffer);
+        const colorOrOptional = await this.extractColor(buffer);
+        let color;
+        if (colorOrOptional instanceof Optional) {
+            if (colorOrOptional.absent)
+                return buffer;
+            color = colorOrOptional.value;
+        }
+        else {
+            color = colorOrOptional;
+        }
+        buffer.cropParameters.color = color;
         return buffer;
     }
 }
@@ -92,7 +102,7 @@ export class PointSampler extends BorderColorSampler {
                     {
                         "name": "lastColor",
                         "editor": "color?",
-                        "label": "Last border color",
+                        "label": "Last sampled color",
                         "readOnly": true,
                         "serializable": false,
                         "alpha": true,
@@ -105,3 +115,40 @@ export class PointSampler extends BorderColorSampler {
 }
 PointSampler["className"] = "PointSampler";
 processNodes.addClass(PointSampler);
+export class ManualColor extends BorderColorSampler {
+    constructor() {
+        super();
+    }
+    extractColor(image) {
+        let color = this.ownBridge.model["color"];
+        if (isNullish(color))
+            return Promise.resolve(new Optional(0, true));
+        return Promise.resolve(color);
+    }
+    serialize() {
+        return this.ownBridge.exportModel();
+    }
+    deserialize(obj) {
+        this.ownBridge.patchModel(obj);
+    }
+    get modelBridge() {
+        return this.ownBridge.pair;
+    }
+    get ownBridge() {
+        if (!this.bridge) {
+            this.bridge = new ModelBridge({ "lastColor": null }, {
+                "properties": [
+                    {
+                        "name": "color",
+                        "editor": "color?",
+                        "label": "Color override",
+                        "alpha": true,
+                    },
+                ],
+            });
+        }
+        return this.bridge;
+    }
+}
+ManualColor["className"] = "ManualColor";
+processNodes.addClass(ManualColor);

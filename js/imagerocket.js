@@ -1,7 +1,7 @@
 import { SimpleCropDetector } from "./processing/simple_crop_detector.js";
 import { CanvasImageBuffer } from "./processing/image.js";
 import { ImageProcessingPipeline, processNodes, } from "./processing/process_node.js";
-import { PointSampler } from "./processing/samplers.js";
+import { ManualColor, PointSampler } from "./processing/samplers.js";
 import * as drop from "./ui/drop.js";
 import * as util from "./processing/util.js";
 import { SimpleExpander } from "./processing/expanders.js";
@@ -16,15 +16,18 @@ class ImageRocketApp {
         let detector = new SimpleCropDetector();
         let expander = new SimpleExpander();
         expander.expandBy = 4;
+        let manual = new ManualColor();
         let filler = new BorderColorFiller();
-        let elements = [sampler, detector, expander, filler];
+        let elements = [sampler, detector, expander, manual, filler];
         let pipeline = new ImageProcessingPipeline(elements);
         for (let node of elements) {
             const title = processNodes.classNameFromInstance(node);
             const bridge = node.modelBridge;
             const nodeElement = cloneTemplate("processNode");
             if (bridge) {
-                nodeElement.querySelector(".contents").appendChild(new PropertySheet(bridge).element);
+                nodeElement
+                    .querySelector(".contents")
+                    .appendChild(new PropertySheet(bridge).element);
             }
             nodeElement.querySelector(".title").textContent = title;
             document.body.appendChild(nodeElement);
@@ -43,20 +46,15 @@ class ImageRocketApp {
             });
         }
         drop.dropHandler(dropBox, this.processBlob.bind(this));
-        // dropping a file anywhere else is probably an accident,
-        // prevent the browser from navigating away
-        for (let eventName of ["drop", "dragover"]) {
-            document.body.addEventListener(eventName, event => {
-                event.preventDefault();
-                event.stopPropagation();
-            });
-        }
-        dropBox.addEventListener("paste", ((e) => {
+        document.body.addEventListener("paste", ((e) => {
             var _a, _b;
             let target = e.target;
+            if (target === e.currentTarget)
+                target = document.activeElement;
             if (((_a = target.tagName) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "input" &&
-                pasteTargets.has(target.type.toLowerCase()))
+                pasteTargets.has(target.type.toLowerCase())) {
                 return;
+            }
             let items = (_b = e.clipboardData) === null || _b === void 0 ? void 0 : _b.items;
             if (items) {
                 let stringItem = null;
@@ -86,6 +84,14 @@ class ImageRocketApp {
                 }
             }
         }));
+        // dropping a file anywhere else is probably an accident,
+        // prevent the browser from navigating away
+        for (let eventName of ["drop", "dragover"]) {
+            document.body.addEventListener(eventName, event => {
+                event.preventDefault();
+                event.stopPropagation();
+            });
+        }
     }
     async processBlob(blob) {
         let image = await createImageBitmap(blob);
