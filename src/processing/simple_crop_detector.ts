@@ -1,3 +1,4 @@
+import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer, Color, formatColor } from "./image.js";
 import { ImageProcessingNode, processNodes } from "./process_node.js";
 import * as util from "./util.js";
@@ -14,6 +15,7 @@ export class SimpleCropDetector extends ImageProcessingNode {
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
     buffer = buffer.toByteImageBuffer();
     const border = buffer.cropParameters.color;
+    this.ownBridge.model["lastColor"] = border;
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
     let rect = [0, 0, inputWidth, inputHeight];
@@ -56,6 +58,33 @@ export class SimpleCropDetector extends ImageProcessingNode {
     }
     return true;
   }
+
+  get modelBridge(): ModelBridge {
+    return this.ownBridge.pair;
+  }
+
+  private get ownBridge(): ModelBridge {
+    if (!this.bridge) {
+      this.bridge = new ModelBridge(
+        { "lastColor": null },
+        {
+          "properties": [
+            {
+              "name": "lastColor",
+              "editor": "color?",
+              "label": "Last color used for crop detection",
+              "readOnly": true,
+              "serializable": false,
+              "alpha": true,
+            },
+          ],
+        }
+      );
+    }
+    return this.bridge;
+  }
+
+  private bridge?: ModelBridge;
 }
 
 SimpleCropDetector["className"] = "SimpleCropDetector";

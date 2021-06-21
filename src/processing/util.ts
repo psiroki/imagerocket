@@ -31,6 +31,10 @@ export function replaceUndefined(val: any, replacement: any): any {
   return typeof val === "undefined" ? replacement : val;
 }
 
+export function isNullish(val: any): boolean {
+  return typeof val === "undefined" || val === null;
+}
+
 export function clamp(val: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, val));
 }
@@ -62,4 +66,19 @@ export class AsyncStream<T> {
   }
 
   private listeners: Set<Listener<T>> = new Set();
+}
+
+export class Optional<T> {
+  constructor(value: T, absent: boolean = false) {
+    this.valueOrNull = absent ? null : value;
+    this.absent = absent;
+  }
+
+  get value(): T {
+    if (this.absent) throw new TypeError("Optional value is absent");
+    return this.valueOrNull!;
+  }
+
+  private readonly valueOrNull: T | null;
+  readonly absent: boolean;
 }

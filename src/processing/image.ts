@@ -81,6 +81,9 @@ export const extractAlpha = (() => {
     ? (val: number) => val & 0xff
     : (val: number) => val >>> 24 & 0xff;
 })();
+export function rgba(r: number, g: number, b: number, a: number): number {
+  return shiftToRed(r) | shiftToGreen(g) | shiftToBlue(b) | shiftToAlpha(a);
+}
 
 export const platformIsLittleEndian = (() => {
   const test = new Uint32Array([0x12345678]);

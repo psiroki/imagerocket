@@ -4,7 +4,7 @@ import {
   ImageProcessingPipeline,
   processNodes,
 } from "./processing/process_node.js";
-import { PointSampler } from "./processing/samplers.js";
+import { ManualColor, PointSampler } from "./processing/samplers.js";
 
 import * as drop from "./ui/drop.js";
 import * as util from "./processing/util.js";
@@ -22,15 +22,18 @@ class ImageRocketApp {
     let detector = new SimpleCropDetector();
     let expander = new SimpleExpander();
     expander.expandBy = 4;
+    let manual = new ManualColor();
     let filler = new BorderColorFiller();
-    let elements = [sampler, detector, expander, filler];
+    let elements = [sampler, detector, expander, manual, filler];
     let pipeline = new ImageProcessingPipeline(elements);
     for (let node of elements) {
       const title = processNodes.classNameFromInstance(node);
       const bridge = node.modelBridge;
       const nodeElement = cloneTemplate("processNode")!;
       if (bridge) {
-        nodeElement.querySelector(".contents")!.appendChild(new PropertySheet(bridge).element);
+        nodeElement
+          .querySelector(".contents")!
+          .appendChild(new PropertySheet(bridge).element);
       }
       nodeElement.querySelector(".title")!.textContent = title;
       document.body.appendChild(nodeElement);
@@ -54,21 +57,15 @@ class ImageRocketApp {
       });
     }
     drop.dropHandler(dropBox, this.processBlob.bind(this));
-    // dropping a file anywhere else is probably an accident,
-    // prevent the browser from navigating away
-    for (let eventName of ["drop", "dragover"]) {
-      document.body.addEventListener(eventName, event => {
-        event.preventDefault();
-        event.stopPropagation();
-      });
-    }
-    dropBox.addEventListener("paste", ((e: ClipboardEvent) => {
+    document.body.addEventListener("paste", ((e: ClipboardEvent) => {
       let target = e.target as any;
+      if (target === e.currentTarget) target = document.activeElement;
       if (
         target.tagName?.toLowerCase() === "input" &&
         pasteTargets.has(target.type.toLowerCase())
-      )
+      ) {
         return;
+      }
       let items = e.clipboardData?.items;
       if (items) {
         let stringItem: DataTransferItem | null = null;
@@ -98,6 +95,14 @@ class ImageRocketApp {
         }
       }
     }) as EventListener);
+    // dropping a file anywhere else is probably an accident,
+    // prevent the browser from navigating away
+    for (let eventName of ["drop", "dragover"]) {
+      document.body.addEventListener(eventName, event => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+    }
   }
 
   async processBlob(blob: Blob) {

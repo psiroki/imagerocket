@@ -1,5 +1,9 @@
-import { Color, extractAlpha, formatColor } from "../processing/image.js";
-import { AsyncStream, replaceUndefined } from "../processing/util.js";
+import { Color, extractAlpha, formatColor, rgba } from "../processing/image.js";
+import {
+  AsyncStream,
+  isNullish,
+  replaceUndefined,
+} from "../processing/util.js";
 import { ModelBridge } from "./model_bridge.js";
 import { cloneTemplate } from "./templates.js";
 
@@ -128,7 +132,7 @@ export class PropertySheet {
         case "boolean":
           elements = this.createBooleanEditor(item);
           break;
-        }
+      }
       if (elements) valueElement.appendChild(elements);
     }
   }
@@ -138,29 +142,81 @@ export class PropertySheet {
   }
 
   createColorEditor(item: any): Element {
+    const readOnly = !!item["readOnly"];
+    const optional = item["_internal"]["optional"];
+
     const container = document.createElement("span");
     container.classList.add("colorEditor");
     const name = item["name"];
+    const optionalInput = document.createElement("input");
+    optionalInput.type = "checkbox";
+    optionalInput.checked = true;
+    optionalInput.disabled = readOnly;
+    if (optional) {
+      container.appendChild(optionalInput);
+    }
     const colorInput = document.createElement("input");
     container.appendChild(colorInput);
     colorInput.type = "color";
-    colorInput.disabled = !!item["readOnly"];
+    colorInput.disabled = readOnly;
 
     const alphaRange = document.createElement("input");
     container.appendChild(alphaRange);
     alphaRange.type = "range";
     alphaRange.min = "0";
     alphaRange.max = "255";
-    alphaRange.disabled = !!item["readOnly"];
+    alphaRange.disabled = readOnly;
+
+    const alphaInput = document.createElement("input");
+    container.appendChild(alphaInput);
+    alphaInput.type = "number";
+    alphaInput.min = "0";
+    alphaInput.max = "255";
+    alphaInput.disabled = readOnly;
 
     const sync = (target: any, prop: string): void => {
-      const color = target[prop] as Color;
+      const raw = target[prop];
+      const defined = !isNullish(raw);
+      const color = (!defined ? 0 : raw) as Color;
       colorInput.value = formatColor(color).substring(0, 7);
       alphaRange.value = extractAlpha(color).toString();
+      optionalInput.checked = defined;
     };
 
     this.bridge.addHandler(name, sync);
     sync(this.model, name);
+
+    for (let input of [colorInput, alphaRange, alphaInput]) {
+      input.addEventListener("input", (event) => {
+        if (event.target === alphaRange) alphaInput.value = alphaRange.value;
+        if (event.target === alphaInput) alphaRange.value = alphaInput.value;
+        if (!readOnly) {
+          if (optional && !optionalInput.checked) {
+            this.bridge.model[name] = null;
+          } else {
+            const colorString = colorInput.value.substring(1);
+            let comps = new Array(3);
+            for (let i = 0; i < 3; ++i) {
+              let val = parseInt(
+                colorString.substring(i << 1, (i + 1) << 1),
+                16
+              );
+              if (isNaN(val)) {
+                // invalid input is ignored
+                return;
+              }
+              comps[i] = val;
+            }
+            this.bridge.model[name] = rgba(
+              comps[0],
+              comps[1],
+              comps[2],
+              +alphaRange.value
+            );
+          }
+        }
+      });
+    }
 
     return container;
   }
@@ -236,7 +292,7 @@ export class PropertySheet {
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
 
-    numberInput.addEventListener("input", event => {
+    numberInput.addEventListener("input", (event) => {
       let val: number | null = +numberInput.value;
       if (isNaN(val)) {
         val = optional ? null : 0;
@@ -251,6 +307,7 @@ export class PropertySheet {
 
   createBooleanEditor(item: any): Element {
     const container = document.createElement("span");
+    const optional = item["_internal"]["optional"];
     container.classList.add("booleanEditor");
     const name = item["name"];
 
@@ -259,16 +316,31 @@ export class PropertySheet {
     checkbox.type = "checkbox";
     checkbox.disabled = !!item["readOnly"];
 
+    let lastValue: any;
+
+    if (optional) {
+      checkbox.addEventListener("click", (event) => {
+        if (lastValue) {
+          checkbox.checked = true;
+          checkbox.indeterminate = true;
+        }
+      });
+    }
+
     const updateControls = (target: any, prop: string): void => {
       const val = target[prop];
       checkbox.checked = !!val;
+      if (optional) {
+        checkbox.indeterminate = typeof val !== "boolean";
+        lastValue = val;
+      }
     };
 
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
 
-    checkbox.addEventListener("input", event => {
-      let val = checkbox.checked;
+    checkbox.addEventListener("input", (event) => {
+      let val = checkbox.indeterminate ? null : checkbox.checked;
       this.bridge.model[name] = val;
     });
 
