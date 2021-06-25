@@ -94,6 +94,10 @@ body {
   align-items: center;
 }
 
+.propertySheet > .propertySheetItem.vertical {
+  flex-direction: column;
+}
+
 .propertySheet > .propertySheetItem > .propertyName,
 .propertySheet > .propertySheetItem > .propertyValue {
   flex: 1 1 0;

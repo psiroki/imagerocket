@@ -1,4 +1,4 @@
-import { Color, extractAlpha, formatColor, rgba } from "../processing/image.js";
+import { Color, extractAlpha, formatColor, rgba, shiftToAlpha } from "../processing/image.js";
 import {
   AsyncStream,
   isNullish,
@@ -11,10 +11,6 @@ const optionalPattern = /\?$/;
 
 interface Formatter {
   (input: string): string;
-}
-
-interface RealUpdate {
-  (real: number): void;
 }
 
 function bindValues(
@@ -96,6 +92,18 @@ class ExponentialMapper {
   private readonly scale: number;
 }
 
+function setupNumberInputWidth(e: HTMLInputElement): void {
+  let bound = Math.max(...[e.min, e.max].map(e => e.length));
+  if (bound === 0) return;
+  let additional = e.step.indexOf(".");
+  if (additional >= 0) {
+    additional = e.step.length - additional;
+  } else {
+    additional = 0;
+  }
+  e.style.width = bound + additional + 3 + "ch";
+}
+
 export class PropertySheet {
   constructor(bridge: ModelBridge) {
     this.bridge = bridge;
@@ -132,6 +140,10 @@ export class PropertySheet {
         case "boolean":
           elements = this.createBooleanEditor(item);
           break;
+        case "processNode[]":
+          elements = this.createProcessNodeArrayEditor(item);
+          itemElement.classList.add("vertical");
+          break;
       }
       if (elements) valueElement.appendChild(elements);
     }
@@ -144,8 +156,9 @@ export class PropertySheet {
   createColorEditor(item: any): Element {
     const readOnly = !!item["readOnly"];
     const optional = item["_internal"]["optional"];
+    const defaultValue = item["defaultValue"] || shiftToAlpha(255);
 
-    const container = document.createElement("span");
+    const container = document.createElement("div");
     container.classList.add("colorEditor");
     const name = item["name"];
     const optionalInput = document.createElement("input");
@@ -172,24 +185,34 @@ export class PropertySheet {
     alphaInput.type = "number";
     alphaInput.min = "0";
     alphaInput.max = "255";
+    setupNumberInputWidth(alphaInput);
     alphaInput.disabled = readOnly;
 
     const sync = (target: any, prop: string): void => {
       const raw = target[prop];
       const defined = !isNullish(raw);
-      const color = (!defined ? 0 : raw) as Color;
+      const color = (!defined ? defaultValue : raw) as Color;
       colorInput.value = formatColor(color).substring(0, 7);
-      alphaRange.value = extractAlpha(color).toString();
+      alphaInput.value = alphaRange.value = extractAlpha(color).toString();
       optionalInput.checked = defined;
+      for (let input of [colorInput, alphaRange, alphaInput]) {
+        input.disabled = !defined;
+      }
     };
 
     this.bridge.addHandler(name, sync);
     sync(this.model, name);
 
-    for (let input of [colorInput, alphaRange, alphaInput]) {
+    for (let input of [colorInput, alphaRange, alphaInput, optionalInput]) {
       input.addEventListener("input", (event) => {
         if (event.target === alphaRange) alphaInput.value = alphaRange.value;
         if (event.target === alphaInput) alphaRange.value = alphaInput.value;
+        if (event.target === optionalInput) {
+          const disabled = !optionalInput.checked;
+          for (let otherInput of [colorInput, alphaRange, alphaInput]) {
+            otherInput.disabled = disabled;
+          }
+        }
         if (!readOnly) {
           if (optional && !optionalInput.checked) {
             this.bridge.model[name] = null;
@@ -222,7 +245,7 @@ export class PropertySheet {
   }
 
   createExponentialSlider(item: any): Element {
-    const container = document.createElement("span");
+    const container = document.createElement("div");
     container.classList.add("exponentialSlider");
     const name = item["name"];
     const expOffset = item["expOffset"] ?? 1;
@@ -249,6 +272,7 @@ export class PropertySheet {
     numberInput.type = "number";
     numberInput.min = expMin;
     numberInput.max = expMax;
+    setupNumberInputWidth(numberInput);
     numberInput.disabled = !!item["readOnly"];
 
     const updateControls = (target: any, prop: string): void => {
@@ -268,7 +292,7 @@ export class PropertySheet {
   }
 
   createNumberEditor(item: any, forceInteger: boolean): Element {
-    const container = document.createElement("span");
+    const container = document.createElement("div");
     container.classList.add("numberEditor");
     const optional = item["_internal"]["optional"];
     const name = item["name"];
@@ -282,6 +306,7 @@ export class PropertySheet {
     if (typeof min === "number") numberInput.min = min.toString();
     if (typeof max === "number") numberInput.max = max.toString();
     if (typeof step === "number") numberInput.step = step.toString();
+    setupNumberInputWidth(numberInput);
     numberInput.disabled = !!item["readOnly"];
 
     const updateControls = (target: any, prop: string): void => {
@@ -306,7 +331,7 @@ export class PropertySheet {
   }
 
   createBooleanEditor(item: any): Element {
-    const container = document.createElement("span");
+    const container = document.createElement("div");
     const optional = item["_internal"]["optional"];
     container.classList.add("booleanEditor");
     const name = item["name"];
@@ -344,6 +369,12 @@ export class PropertySheet {
       this.bridge.model[name] = val;
     });
 
+    return container;
+  }
+
+  createProcessNodeArrayEditor(item: any): Element {
+    const container = document.createElement("div");
+    // TODO: implement
     return container;
   }
 

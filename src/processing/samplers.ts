@@ -1,12 +1,12 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer, Color, platformIsLittleEndian } from "./image.js";
-import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { ProcessNode, globalSerializer } from "./process_node.js";
 import { clamp, isNullish, Optional, toUint32Array } from "./util.js";
 
 /**
  * A sampler extracts a color from the image
  */
-export abstract class BorderColorSampler extends ImageProcessingNode {
+export abstract class BorderColorSampler extends ProcessNode {
   abstract extractColor(image: ImageBuffer): Promise<Color | Optional<Color>>;
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
@@ -134,7 +134,7 @@ export class PointSampler extends BorderColorSampler {
 
 PointSampler["className"] = "PointSampler";
 
-processNodes.addClass(PointSampler);
+globalSerializer.addClass(PointSampler);
 
 
 export class ManualColor extends BorderColorSampler {
@@ -184,4 +184,4 @@ export class ManualColor extends BorderColorSampler {
 
 ManualColor["className"] = "ManualColor";
 
-processNodes.addClass(ManualColor);
+globalSerializer.addClass(ManualColor);

@@ -1,21 +1,56 @@
 export const workerEnvironment = !!self.document;
 
-export function toUint8ClampedArray(arr: DataView |
-  Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array) {
+export function toUint8ClampedArray(
+  arr:
+    | DataView
+    | Int8Array
+    | Uint8Array
+    | Uint8ClampedArray
+    | Int16Array
+    | Uint16Array
+    | Int32Array
+    | Uint32Array
+    | Float32Array
+    | Float64Array
+) {
   return new Uint8ClampedArray(arr.buffer, arr.byteOffset, arr.byteLength);
 }
 
-export function toDataView(arr: DataView |
-  Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array) {
+export function toDataView(
+  arr:
+    | DataView
+    | Int8Array
+    | Uint8Array
+    | Uint8ClampedArray
+    | Int16Array
+    | Uint16Array
+    | Int32Array
+    | Uint32Array
+    | Float32Array
+    | Float64Array
+) {
   return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
 }
 
-export function toUint32Array(arr: DataView |
-  Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array) {
+export function toUint32Array(
+  arr:
+    | DataView
+    | Int8Array
+    | Uint8Array
+    | Uint8ClampedArray
+    | Int16Array
+    | Uint16Array
+    | Int32Array
+    | Uint32Array
+    | Float32Array
+    | Float64Array
+) {
   return new Uint32Array(arr.buffer, arr.byteOffset, arr.byteLength >> 2);
 }
 
-export function toHtmlCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): HTMLCanvasElement {
+export function toHtmlCanvas(
+  canvas: HTMLCanvasElement | OffscreenCanvas
+): HTMLCanvasElement {
   if (canvas instanceof HTMLCanvasElement) {
     return canvas;
   } else {
@@ -61,7 +96,7 @@ export class AsyncStream<T> {
     return {
       cancel() {
         listeners.delete(listener);
-      }
+      },
     };
   }
 
@@ -81,4 +116,17 @@ export class Optional<T> {
 
   private readonly valueOrNull: T | null;
   readonly absent: boolean;
+}
+
+export function deepCopyJson(val: any): any {
+  if (val instanceof Array) {
+    return val.map(deepCopyJson);
+  } else if (val && typeof val === "object") {
+    return Object.fromEntries(
+      Object.entries(val).map(entry => [entry[0], deepCopyJson(entry[1])])
+    );
+  } else {
+    // scalar
+    return val;
+  }
 }

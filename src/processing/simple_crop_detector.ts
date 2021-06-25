@@ -1,9 +1,9 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer, Color, formatColor } from "./image.js";
-import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { ProcessNode, globalSerializer } from "./process_node.js";
 import * as util from "./util.js";
 
-export class SimpleCropDetector extends ImageProcessingNode {
+export class SimpleCropDetector extends ProcessNode {
 
   serialize(): object {
     return {};
@@ -89,4 +89,4 @@ export class SimpleCropDetector extends ImageProcessingNode {
 
 SimpleCropDetector["className"] = "SimpleCropDetector";
 
-processNodes.addClass(SimpleCropDetector);
+globalSerializer.addClass(SimpleCropDetector);

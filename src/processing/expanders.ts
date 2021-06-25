@@ -1,10 +1,10 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer } from "./image.js";
-import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { ProcessNode, globalSerializer } from "./process_node.js";
 
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
 
-export class SimpleExpander extends ImageProcessingNode {
+export class SimpleExpander extends ProcessNode {
   serialize(): object {
     return this.ownBridge.exportModel();
   }
@@ -75,4 +75,4 @@ export class SimpleExpander extends ImageProcessingNode {
 
 SimpleExpander["className"] = "SimpleExpander";
 
-processNodes.addClass(SimpleExpander);
+globalSerializer.addClass(SimpleExpander);
