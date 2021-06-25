@@ -4,12 +4,12 @@ import { ProcessNode, globalSerializer } from "./process_node.js";
 import * as util from "./util.js";
 
 export class SimpleCropDetector extends ProcessNode {
-
   serialize(): object {
-    return {};
+    return { "_super": super.serialize() };
   }
 
   deserialize(obj: object): void {
+    super.deserialize(obj["_super"]);
   }
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
@@ -20,22 +20,33 @@ export class SimpleCropDetector extends ProcessNode {
     const inputHeight = buffer.height;
     let rect = [0, 0, inputWidth, inputHeight];
     for (let side = 0; side < 4; ++side) {
-      while (rect[side & 1] < rect[side & 1 | 2]) {
-        if (!this.allBorderColor(border, buffer, rect.map((e, i, a) => {
-          if ((i & 2) === (side & 2) || (i & 1) !== (side & 1)) {
-            return e;
-          }
-          return a[i^2] - (side & 2) + 1;
-        }))) break;
+      while (rect[side & 1] < rect[(side & 1) | 2]) {
+        if (
+          !this.allBorderColor(
+            border,
+            buffer,
+            rect.map((e, i, a) => {
+              if ((i & 2) === (side & 2) || (i & 1) !== (side & 1)) {
+                return e;
+              }
+              return a[i ^ 2] - (side & 2) + 1;
+            })
+          )
+        )
+          break;
         // step sides towards the center
         rect[side] -= (side & 2) - 1;
       }
     }
     buffer.cropParameters.cropRect = Array.from(rect);
-    return buffer
+    return buffer;
   }
 
-  private allBorderColor(border: Color, buffer: ImageBuffer, rect: number[]): boolean {
+  private allBorderColor(
+    border: Color,
+    buffer: ImageBuffer,
+    rect: number[]
+  ): boolean {
     if (rect[0] >= rect[2] || rect[1] >= rect[3]) return false;
     const left = rect[0];
     const top = rect[1];
@@ -59,11 +70,7 @@ export class SimpleCropDetector extends ProcessNode {
     return true;
   }
 
-  get modelBridge(): ModelBridge {
-    return this.ownBridge.pair;
-  }
-
-  private get ownBridge(): ModelBridge {
+  get ownBridge(): ModelBridge {
     if (!this.bridge) {
       this.bridge = new ModelBridge(
         { "lastColor": null },

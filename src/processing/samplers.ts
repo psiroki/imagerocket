@@ -57,18 +57,15 @@ export class PointSampler extends BorderColorSampler {
   }
 
   serialize(): object {
-    return this.ownBridge.exportModel();
+    return this.ownBridge.exportToModel({ "_super": super.serialize() });
   }
 
   deserialize(obj: object) {
+    super.deserialize(obj["_super"]);
     this.ownBridge.patchModel(obj);
   }
 
-  get modelBridge(): ModelBridge {
-    return this.ownBridge.pair;
-  }
-
-  private get ownBridge(): ModelBridge {
+  get ownBridge(): ModelBridge {
     if (!this.bridge) {
       this.bridge = new ModelBridge(
         { "lastColor": null },
@@ -80,7 +77,7 @@ export class PointSampler extends BorderColorSampler {
               "label": "X coordinate normalized to [0, 1]",
               "min": 0,
               "max": 1,
-              "step": 0.01
+              "step": 0.01,
             },
             {
               "name": "normalizedY",
@@ -88,7 +85,7 @@ export class PointSampler extends BorderColorSampler {
               "label": "Y coordinate normalized to [0, 1]",
               "min": 0,
               "max": 1,
-              "step": 0.01
+              "step": 0.01,
             },
             {
               "name": "pixelX",
@@ -136,7 +133,6 @@ PointSampler["className"] = "PointSampler";
 
 globalSerializer.addClass(PointSampler);
 
-
 export class ManualColor extends BorderColorSampler {
   constructor() {
     super();
@@ -149,18 +145,15 @@ export class ManualColor extends BorderColorSampler {
   }
 
   serialize(): object {
-    return this.ownBridge.exportModel();
+    return this.ownBridge.exportToModel({ "_super": super.serialize() });
   }
 
   deserialize(obj: object) {
+    super.deserialize(obj["_super"]);
     this.ownBridge.patchModel(obj);
   }
 
-  get modelBridge(): ModelBridge {
-    return this.ownBridge.pair;
-  }
-
-  private get ownBridge(): ModelBridge {
+  get ownBridge(): ModelBridge {
     if (!this.bridge) {
       this.bridge = new ModelBridge(
         { "lastColor": null },

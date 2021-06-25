@@ -27,9 +27,7 @@ class ImageRocketApp {
     let filler = new BorderColorFiller();
     let elements = [sampler, detector, expander, manual, filler];
     let pipeline = new ImageProcessingPipeline(elements);
-    for (let node of elements) {
-      document.body.appendChild(new ProcessNodeEditor(node).editorElement);
-    }
+    document.body.appendChild(new ProcessNodeEditor(pipeline).editorElement);
     this.pipeline = pipeline;
   }
 

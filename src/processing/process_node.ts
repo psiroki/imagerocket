@@ -6,7 +6,7 @@ export abstract class Serializable {
   /**
    * Returns an almost JSON compatible object
    * that can be used with [deserialize].
-   * Apart from standard JSON types [ProcessNode]s
+   * Apart from standard JSON types [Serializable]s
    * are allowed as well.
    */
   abstract serialize(): object;
@@ -31,8 +31,28 @@ export abstract class Serializable {
 export abstract class ProcessNode extends Serializable {
   abstract processImage(buffer: ImageBuffer): Promise<ImageBuffer>;
   get modelBridge(): ModelBridge | null {
+    return this.ownBridge?.pair || null;
+  }
+
+  get ownBridge(): ModelBridge | null {
     return null;
   }
+
+  serialize(): object {
+    return { "nodeId": this.nodeId };
+  }
+
+  deserialize(obj: object): void {
+    this._nodeId = obj["nodeId"];
+  }
+
+  get nodeId(): number {
+    return this._nodeId;
+  }
+
+  private _nodeId: number = ++ProcessNode.idCounter;
+
+  private static idCounter: number = Date.now();
 }
 
 export interface SerializableConstructor {
@@ -195,10 +215,11 @@ export const globalSerializer = new Serializer();
 export class ImageProcessingPipeline extends ProcessNode {
   constructor(nodes: ProcessNode[] = []) {
     super();
-    this.nodes = nodes;
+    this.ownBridge.model["pipeline"] = nodes;
   }
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
+    const nodes: ProcessNode[] = this.ownBridge.model["pipeline"];
     for (let node of this.nodes) {
       buffer = await node.processImage(buffer);
     }
@@ -206,12 +227,33 @@ export class ImageProcessingPipeline extends ProcessNode {
   }
 
   serialize(): object {
-    return { "pipeline": this.nodes };
+    return this.ownBridge.exportToModel({ "_super": super.serialize() });
   }
 
   deserialize(obj: object) {
-    this.nodes = obj["pipeline"] as ProcessNode[];
+    super.deserialize(obj["_super"]);
+    this.ownBridge.patchModel(obj);
   }
+
+  get ownBridge(): ModelBridge {
+    if (!this.bridge) {
+      this.bridge = new ModelBridge(
+        { "pipeline": [] },
+        {
+          "properties": [
+            {
+              "name": "pipeline",
+              "editor": "processNode[]",
+              "label": "Nodes",
+            },
+          ],
+        }
+      );
+    }
+    return this.bridge;
+  }
+
+  private bridge?: ModelBridge;
 
   private nodes: ProcessNode[];
 }

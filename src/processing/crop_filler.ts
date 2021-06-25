@@ -1,19 +1,20 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ByteImageBuffer, ImageBuffer, Color, CropParameters } from "./image.js";
+import {
+  ByteImageBuffer,
+  ImageBuffer,
+  CropParameters,
+} from "./image.js";
 import { ProcessNode, globalSerializer } from "./process_node.js";
 import * as util from "./util.js";
 
 export class BorderColorFiller extends ProcessNode {
   serialize(): object {
-    return this.ownBridge.exportModel();
+    return this.ownBridge.exportToModel({ "_super": super.serialize() });
   }
 
   deserialize(obj: object): void {
+    super.deserialize(obj["_super"]);
     this.ownBridge.patchModel(obj);
-  }
-
-  get modelBridge(): ModelBridge {
-    return this.ownBridge.pair;
   }
 
   get ownBridge(): ModelBridge {
@@ -147,8 +148,8 @@ export class BorderColorFiller extends ProcessNode {
     const newCropRect = newCrop.cropRect;
     // the origin has changed
     for (let i = 0; i < 4; ++i) {
-      expRect[i] -= cropRect[i&1];
-      newCropRect[i] -= cropRect[i&1];
+      expRect[i] -= cropRect[i & 1];
+      newCropRect[i] -= cropRect[i & 1];
     }
     result.cropParameters = newCrop;
     return result;

@@ -1,10 +1,18 @@
-import { Color, extractAlpha, formatColor, rgba, shiftToAlpha } from "../processing/image.js";
+import {
+  Color,
+  extractAlpha,
+  formatColor,
+  rgba,
+  shiftToAlpha,
+} from "../processing/image.js";
+import { ProcessNode } from "../processing/process_node.js";
 import {
   AsyncStream,
   isNullish,
   replaceUndefined,
 } from "../processing/util.js";
 import { ModelBridge } from "./model_bridge.js";
+import { ProcessNodeEditor } from "./node_editor.js";
 import { cloneTemplate } from "./templates.js";
 
 const optionalPattern = /\?$/;
@@ -19,7 +27,7 @@ function bindValues(
   formatter: Formatter
 ) {
   const prefix = output.getAttribute("data-prefix") || "";
-  if (!formatter) formatter = (value) => value;
+  if (!formatter) formatter = value => value;
   var sync = () => {
     output.value = prefix + formatter(input.value);
   };
@@ -57,12 +65,12 @@ class ExponentialMapper {
     real: HTMLInputElement
   ): AsyncStream<number> {
     const result = new AsyncStream<number>();
-    bindValues(exp, real, (s) => {
+    bindValues(exp, real, s => {
       const real = this.mapToReal(+s);
       result.add(real);
       return real.toString();
     });
-    bindValues(real, exp, (s) => {
+    bindValues(real, exp, s => {
       const real = +s;
       result.add(real);
       return this.mapToExp(real).toString();
@@ -204,7 +212,7 @@ export class PropertySheet {
     sync(this.model, name);
 
     for (let input of [colorInput, alphaRange, alphaInput, optionalInput]) {
-      input.addEventListener("input", (event) => {
+      input.addEventListener("input", event => {
         if (event.target === alphaRange) alphaInput.value = alphaRange.value;
         if (event.target === alphaInput) alphaRange.value = alphaInput.value;
         if (event.target === optionalInput) {
@@ -284,7 +292,7 @@ export class PropertySheet {
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
 
-    mapper.bindBidirectional(rangeInput, numberInput).listen((val) => {
+    mapper.bindBidirectional(rangeInput, numberInput).listen(val => {
       this.bridge.model[name] = isNaN(val) ? 0 : Math.round(val);
     });
 
@@ -317,7 +325,7 @@ export class PropertySheet {
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
 
-    numberInput.addEventListener("input", (event) => {
+    numberInput.addEventListener("input", event => {
       let val: number | null = +numberInput.value;
       if (isNaN(val)) {
         val = optional ? null : 0;
@@ -332,8 +340,9 @@ export class PropertySheet {
 
   createBooleanEditor(item: any): Element {
     const container = document.createElement("div");
-    const optional = item["_internal"]["optional"];
     container.classList.add("booleanEditor");
+
+    const optional = item["_internal"]["optional"];
     const name = item["name"];
 
     const checkbox = document.createElement("input");
@@ -344,7 +353,7 @@ export class PropertySheet {
     let lastValue: any;
 
     if (optional) {
-      checkbox.addEventListener("click", (event) => {
+      checkbox.addEventListener("click", event => {
         if (lastValue) {
           checkbox.checked = true;
           checkbox.indeterminate = true;
@@ -364,7 +373,7 @@ export class PropertySheet {
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
 
-    checkbox.addEventListener("input", (event) => {
+    checkbox.addEventListener("input", event => {
       let val = checkbox.indeterminate ? null : checkbox.checked;
       this.bridge.model[name] = val;
     });
@@ -374,7 +383,57 @@ export class PropertySheet {
 
   createProcessNodeArrayEditor(item: any): Element {
     const container = document.createElement("div");
-    // TODO: implement
+    container.classList.add("processNodeArray");
+    const optional = item["_internal"]["optional"];
+    const name = item["name"];
+
+    const editors: Map<number, ProcessNodeEditor> = new Map();
+
+    const updateControls = (target: any, prop: string): void => {
+      const val = target[prop] || [];
+      const nodes: ProcessNode[] = val.map((e: any) => e as ProcessNode);
+      const nodeById = new Map(nodes.map(p => [p.nodeId, p]));
+      const ids = new Set(nodeById.keys());
+      // remove deleted editors
+      for (let editorId of Array.from(editors.keys())) {
+        if (!ids.has(editorId)) {
+          editors.get(editorId)!.editorElement.remove();
+          editors.delete(editorId);
+        } else {
+          ids.delete(editorId);
+        }
+      }
+      let lastEditor: ProcessNodeEditor | undefined;
+      for (let node of nodes) {
+        let editor = editors.get(node.nodeId);
+        if (!editor) {
+          editor = new ProcessNodeEditor(node);
+          editors.set(node.nodeId, editor);
+          if (lastEditor) {
+            container.insertBefore(
+              editor.editorElement,
+              lastEditor.editorElement.nextSibling
+            );
+          } else {
+            container.insertBefore(editor.editorElement, container.firstChild);
+          }
+        }
+        if (
+          lastEditor &&
+          lastEditor.editorElement.nextSibling !== editor.editorElement
+        ) {
+          container.insertBefore(
+            editor.editorElement,
+            lastEditor.editorElement.nextSibling
+          );
+        }
+        lastEditor = editor;
+      }
+    };
+
+    this.bridge.addHandler(name, updateControls);
+    updateControls(this.model, name);
+
     return container;
   }
 

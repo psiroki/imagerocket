@@ -35,7 +35,10 @@ export class ModelBridge implements UpdateObserver {
   }
 
   exportModel(names: string[] | null = null): object {
-    const result = {};
+    return this.exportToModel({}, names);
+  }
+
+  exportToModel(result: object, names: string[] | null = null): object {
     const rawModel = this.rawModel;
     const effectiveNames = names || this.serializableNames;
     for (let name of effectiveNames) {
