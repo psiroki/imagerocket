@@ -382,9 +382,9 @@ export class PropertySheet {
   }
 
   createProcessNodeArrayEditor(item: any): Element {
+    // optional and readOnly is not supported
     const container = document.createElement("div");
     container.classList.add("processNodeArray");
-    const optional = item["_internal"]["optional"];
     const name = item["name"];
 
     const editors: Map<number, ProcessNodeEditor> = new Map();
@@ -417,6 +417,10 @@ export class PropertySheet {
           } else {
             container.insertBefore(editor.editorElement, container.firstChild);
           }
+          editor.titleElement.addEventListener("pointerdown", ev => {
+            const e = ev as PointerEvent;
+            (e.currentTarget as Element).setPointerCapture(e.pointerId);
+          });
         }
         if (
           lastEditor &&
