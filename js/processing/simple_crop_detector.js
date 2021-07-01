@@ -1,11 +1,12 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { ProcessNode, globalSerializer } from "./process_node.js";
 import * as util from "./util.js";
-export class SimpleCropDetector extends ImageProcessingNode {
+export class SimpleCropDetector extends ProcessNode {
     serialize() {
-        return {};
+        return { "_super": super.serialize() };
     }
     deserialize(obj) {
+        super.deserialize(obj["_super"]);
     }
     async processImage(buffer) {
         buffer = buffer.toByteImageBuffer();
@@ -15,7 +16,7 @@ export class SimpleCropDetector extends ImageProcessingNode {
         const inputHeight = buffer.height;
         let rect = [0, 0, inputWidth, inputHeight];
         for (let side = 0; side < 4; ++side) {
-            while (rect[side & 1] < rect[side & 1 | 2]) {
+            while (rect[side & 1] < rect[(side & 1) | 2]) {
                 if (!this.allBorderColor(border, buffer, rect.map((e, i, a) => {
                     if ((i & 2) === (side & 2) || (i & 1) !== (side & 1)) {
                         return e;
@@ -54,9 +55,6 @@ export class SimpleCropDetector extends ImageProcessingNode {
         }
         return true;
     }
-    get modelBridge() {
-        return this.ownBridge.pair;
-    }
     get ownBridge() {
         if (!this.bridge) {
             this.bridge = new ModelBridge({ "lastColor": null }, {
@@ -76,4 +74,4 @@ export class SimpleCropDetector extends ImageProcessingNode {
     }
 }
 SimpleCropDetector["className"] = "SimpleCropDetector";
-processNodes.addClass(SimpleCropDetector);
+globalSerializer.addClass(SimpleCropDetector);

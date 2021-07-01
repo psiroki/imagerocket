@@ -45,7 +45,7 @@ export class AsyncStream {
         return {
             cancel() {
                 listeners.delete(listener);
-            }
+            },
         };
     }
 }
@@ -58,5 +58,85 @@ export class Optional {
         if (this.absent)
             throw new TypeError("Optional value is absent");
         return this.valueOrNull;
+    }
+}
+export function deepCopyJson(val) {
+    if (val instanceof Array) {
+        return val.map(deepCopyJson);
+    }
+    else if (val && typeof val === "object") {
+        return Object.fromEntries(Object.entries(val).map(entry => [entry[0], deepCopyJson(entry[1])]));
+    }
+    else {
+        // scalar
+        return val;
+    }
+}
+function _reverse(i) {
+    let j = 0;
+    let neg = i < 0;
+    if (neg)
+        i = -i;
+    while (i > 0) {
+        j <<= 1;
+        j |= i & 1;
+        i >>= 1;
+    }
+    return neg ? -j : j;
+}
+const _lum = [54, 183, 18];
+const _colorMask = [88, 73, 0];
+const _mask = [193, 150, 164, 236, 216, 33, 40, 11];
+const _scramble = [
+    64049, 50664, 9917, 37895, 22145, 37623, 56494, 1203, 43986, 60549, 3907,
+    38678, 43874, 4152, 38391, 19918,
+];
+export function colorHashString(s, pastellizationFactor = 0) {
+    if (s.length < 3) {
+        s = Array.from(s)
+            .map(s => _reverse(s.codePointAt(0)).toString(2).padStart(8))
+            .join("");
+    }
+    const codes = Array.from(s).map(s => s.codePointAt(0));
+    const l = codes.length;
+    let color = [];
+    let luminosity = 0;
+    const cm = _colorMask.values();
+    let r = 0;
+    let a = 0;
+    let si = -1;
+    for (let c of codes) {
+        ++si;
+        let scrambleBase = (si & 3) << 2;
+        let scrambled = 0;
+        for (let n = 0; n < 2; ++n) {
+            let nibble = (c >> (n << 2)) & 0xf;
+            scrambled <<= 4;
+            scrambled |=
+                _scramble[(scrambleBase + nibble) >> 2] >> ((nibble & 0x3) << 2);
+        }
+        a = (((a ^ _mask[si & 7]) * 17) ^ scrambled) & 0xff;
+        r += 3;
+        if (r >= l) {
+            let ch = a;
+            let cmCurrent = cm.next();
+            if (!cmCurrent.done)
+                ch ^= cmCurrent.value;
+            color.push(ch);
+            r -= l;
+        }
+    }
+    if (pastellizationFactor) {
+        let avg = color.reduce((a, b) => a + b) / color.length;
+        avg = 255 * (1 - pastellizationFactor) + avg * pastellizationFactor;
+        color = color.map(ch => Math.max(0, Math.min(255, Math.round(ch * (1 - pastellizationFactor) + avg * pastellizationFactor))));
+    }
+    luminosity = color.map((ch, i) => _lum[i] * ch).reduce((a, b) => a + b) >>> 8;
+    return new CssColorWithLuminosityImpl("#" + color.map(e => e.toString(16).padStart(2, "0")).join(""), luminosity);
+}
+class CssColorWithLuminosityImpl {
+    constructor(cssColor, luminosity) {
+        this.cssColor = cssColor;
+        this.luminosity = luminosity;
     }
 }

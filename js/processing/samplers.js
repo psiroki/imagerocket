@@ -1,10 +1,10 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { ProcessNode, globalSerializer } from "./process_node.js";
 import { clamp, isNullish, Optional, toUint32Array } from "./util.js";
 /**
  * A sampler extracts a color from the image
  */
-export class BorderColorSampler extends ImageProcessingNode {
+export class BorderColorSampler extends ProcessNode {
     async processImage(buffer) {
         const colorOrOptional = await this.extractColor(buffer);
         let color;
@@ -47,13 +47,11 @@ export class PointSampler extends BorderColorSampler {
         return Promise.resolve(color);
     }
     serialize() {
-        return this.ownBridge.exportModel();
+        return this.ownBridge.exportToModel({ "_super": super.serialize() });
     }
     deserialize(obj) {
+        super.deserialize(obj["_super"]);
         this.ownBridge.patchModel(obj);
-    }
-    get modelBridge() {
-        return this.ownBridge.pair;
     }
     get ownBridge() {
         if (!this.bridge) {
@@ -65,7 +63,7 @@ export class PointSampler extends BorderColorSampler {
                         "label": "X coordinate normalized to [0, 1]",
                         "min": 0,
                         "max": 1,
-                        "step": 0.01
+                        "step": 0.01,
                     },
                     {
                         "name": "normalizedY",
@@ -73,7 +71,7 @@ export class PointSampler extends BorderColorSampler {
                         "label": "Y coordinate normalized to [0, 1]",
                         "min": 0,
                         "max": 1,
-                        "step": 0.01
+                        "step": 0.01,
                     },
                     {
                         "name": "pixelX",
@@ -114,7 +112,7 @@ export class PointSampler extends BorderColorSampler {
     }
 }
 PointSampler["className"] = "PointSampler";
-processNodes.addClass(PointSampler);
+globalSerializer.addClass(PointSampler);
 export class ManualColor extends BorderColorSampler {
     constructor() {
         super();
@@ -126,13 +124,11 @@ export class ManualColor extends BorderColorSampler {
         return Promise.resolve(color);
     }
     serialize() {
-        return this.ownBridge.exportModel();
+        return this.ownBridge.exportToModel({ "_super": super.serialize() });
     }
     deserialize(obj) {
+        super.deserialize(obj["_super"]);
         this.ownBridge.patchModel(obj);
-    }
-    get modelBridge() {
-        return this.ownBridge.pair;
     }
     get ownBridge() {
         if (!this.bridge) {
@@ -151,4 +147,4 @@ export class ManualColor extends BorderColorSampler {
     }
 }
 ManualColor["className"] = "ManualColor";
-processNodes.addClass(ManualColor);
+globalSerializer.addClass(ManualColor);

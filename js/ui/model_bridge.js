@@ -13,7 +13,9 @@ export class ModelBridge {
         return this.outputObserver.model;
     }
     exportModel(names = null) {
-        const result = {};
+        return this.exportToModel({}, names);
+    }
+    exportToModel(result, names = null) {
         const rawModel = this.rawModel;
         const effectiveNames = names || this.serializableNames;
         for (let name of effectiveNames) {

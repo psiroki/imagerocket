@@ -1,13 +1,12 @@
 import { SimpleCropDetector } from "./processing/simple_crop_detector.js";
 import { CanvasImageBuffer } from "./processing/image.js";
-import { ImageProcessingPipeline, processNodes, } from "./processing/process_node.js";
+import { ImageProcessingPipeline, globalSerializer, } from "./processing/process_node.js";
 import { ManualColor, PointSampler } from "./processing/samplers.js";
 import * as drop from "./ui/drop.js";
 import * as util from "./processing/util.js";
 import { SimpleExpander } from "./processing/expanders.js";
 import { BorderColorFiller } from "./processing/crop_filler.js";
-import { PropertySheet } from "./ui/properties.js";
-import { cloneTemplate } from "./ui/templates.js";
+import { ProcessNodeEditor } from "./ui/node_editor.js";
 const pasteTargets = new Set(["text", "number"]);
 class ImageRocketApp {
     constructor(root) {
@@ -20,18 +19,7 @@ class ImageRocketApp {
         let filler = new BorderColorFiller();
         let elements = [sampler, detector, expander, manual, filler];
         let pipeline = new ImageProcessingPipeline(elements);
-        for (let node of elements) {
-            const title = processNodes.classNameFromInstance(node);
-            const bridge = node.modelBridge;
-            const nodeElement = cloneTemplate("processNode");
-            if (bridge) {
-                nodeElement
-                    .querySelector(".contents")
-                    .appendChild(new PropertySheet(bridge).element);
-            }
-            nodeElement.querySelector(".title").textContent = title;
-            document.body.appendChild(nodeElement);
-        }
+        document.body.appendChild(new ProcessNodeEditor(pipeline).editorElement);
         this.pipeline = pipeline;
     }
     run() {
@@ -102,7 +90,7 @@ class ImageRocketApp {
         ctx.drawImage(image, 0, 0);
         let buffer = new CanvasImageBuffer(canvas);
         const pipeline = this.pipeline;
-        console.log(processNodes.serializeNodes([pipeline]));
+        console.log(globalSerializer.serializeAll([pipeline]));
         buffer = await pipeline.processImage(buffer);
         canvas = util.toHtmlCanvas(buffer.toCanvasImageBuffer().canvas);
         let div = document.createElement("div");

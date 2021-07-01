@@ -1,16 +1,14 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ByteImageBuffer, CropParameters } from "./image.js";
-import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { ByteImageBuffer, CropParameters, } from "./image.js";
+import { ProcessNode, globalSerializer } from "./process_node.js";
 import * as util from "./util.js";
-export class BorderColorFiller extends ImageProcessingNode {
+export class BorderColorFiller extends ProcessNode {
     serialize() {
-        return this.ownBridge.exportModel();
+        return this.ownBridge.exportToModel({ "_super": super.serialize() });
     }
     deserialize(obj) {
+        super.deserialize(obj["_super"]);
         this.ownBridge.patchModel(obj);
-    }
-    get modelBridge() {
-        return this.ownBridge.pair;
     }
     get ownBridge() {
         if (!this.bridge) {
@@ -137,4 +135,4 @@ export class BorderColorFiller extends ImageProcessingNode {
     }
 }
 BorderColorFiller["className"] = "BorderColorFiller";
-processNodes.addClass(BorderColorFiller);
+globalSerializer.addClass(BorderColorFiller);

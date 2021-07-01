@@ -1,20 +1,18 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ImageProcessingNode, processNodes } from "./process_node.js";
+import { ProcessNode, globalSerializer } from "./process_node.js";
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
-export class SimpleExpander extends ImageProcessingNode {
+export class SimpleExpander extends ProcessNode {
     constructor() {
         super(...arguments);
         this.expand = 0;
     }
     serialize() {
-        return this.ownBridge.exportModel();
+        return this.ownBridge.exportToModel({ "_super": super.serialize() });
     }
     deserialize(obj) {
+        super.deserialize(obj["_super"]);
         this.expand = obj["expand"];
         this.ownBridge.patchModel(obj);
-    }
-    get modelBridge() {
-        return this.ownBridge.pair;
     }
     get ownBridge() {
         if (!this.bridge) {
@@ -32,7 +30,7 @@ export class SimpleExpander extends ImageProcessingNode {
                         "name": "override" + suffix,
                         "editor": "int?",
                         "label": "Border width override (" + suffix.toLowerCase() + ")",
-                    }))
+                    })),
                 ],
             });
             this.bridge.addHandler("expand", (target, prop) => (this.expand = target[prop]));
@@ -59,4 +57,4 @@ export class SimpleExpander extends ImageProcessingNode {
     }
 }
 SimpleExpander["className"] = "SimpleExpander";
-processNodes.addClass(SimpleExpander);
+globalSerializer.addClass(SimpleExpander);

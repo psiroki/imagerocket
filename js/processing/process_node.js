@@ -1,18 +1,49 @@
-export class ProcessNode {
-}
-export class ImageProcessingNode extends ProcessNode {
-    get modelBridge() {
-        return null;
+import { ModelBridge } from "../ui/model_bridge.js";
+import { deepCopyJson } from "./util.js";
+export class Serializable {
+    serializedClone() {
+        const arr = globalSerializer.deserializeAll(deepCopyJson(globalSerializer.serializeAll([this])));
+        return arr[0];
     }
 }
-class ProcessNodeSerializer {
+export class ProcessNode extends Serializable {
+    constructor() {
+        super(...arguments);
+        this._nodeId = ++ProcessNode.idCounter;
+    }
+    get modelBridge() {
+        var _a;
+        return ((_a = this.ownBridge) === null || _a === void 0 ? void 0 : _a.pair) || null;
+    }
+    get ownBridge() {
+        return null;
+    }
+    serialize() {
+        return { "nodeId": this.nodeId };
+    }
+    deserialize(obj) {
+        this._nodeId = obj["nodeId"];
+    }
+    get nodeId() {
+        return this._nodeId;
+    }
+}
+ProcessNode.idCounter = Date.now();
+class SerializationSession {
     constructor(service) {
         this.ids = new Map();
+        this.rootIds = [];
         this.result = {};
         this.counter = new Map();
         this.service = service;
     }
     addNode(node) {
+        return this.addNodeInternal(node, true);
+    }
+    serialize() {
+        return [{ "_class": "_rootRefs", "ids": Array.from(this.rootIds) }].concat(Object.values(this.result));
+    }
+    addNodeInternal(node, root) {
         var _a;
         let id = this.ids.get(node);
         if (!id) {
@@ -25,14 +56,13 @@ class ProcessNodeSerializer {
             serialized["_id"] = id;
             this.result[id] = serialized;
         }
+        if (root)
+            this.rootIds.push(id);
         return id;
     }
-    serialize() {
-        return Object.values(this.result);
-    }
     findReferences(node, value) {
-        if (value instanceof ProcessNode) {
-            return { "_class": "_ref", "id": this.addNode(value) };
+        if (value instanceof Serializable) {
+            return { "_class": "_ref", "id": this.addNodeInternal(value, false) };
         }
         else if (value instanceof Array) {
             return value.map(e => this.findReferences(node, e));
@@ -59,22 +89,28 @@ class ProcessNodeSerializer {
         }
     }
 }
-class ProcessNodeDeserializer {
+class DeserializationSession {
     constructor(service) {
         this.nodeById = new Map();
         this.service = service;
     }
     deserialize(serializedNodes) {
-        for (let serializedForm of serializedNodes) {
-            let c = this.service.lookupClass(serializedForm["_class"]);
+        const rootRefs = serializedNodes.find(e => e["_class"] === "_rootRefs") || null;
+        const rootIds = rootRefs ? rootRefs["ids"] || null : null;
+        const rest = serializedNodes.filter(s => s["_class"] !== "_rootRefs");
+        for (let serializedForm of rest) {
+            const classSpec = serializedForm["_class"];
+            let c = this.service.lookupClass(classSpec);
             let id = serializedForm["_id"];
             this.nodeById.set(id, new c());
         }
-        for (let serializedForm of serializedNodes) {
+        for (let serializedForm of rest) {
             let resolved = this.resolveReferences(serializedForm);
             this.nodeById.get(serializedForm["_id"]).deserialize(resolved);
         }
-        return Array.from(this.nodeById.values());
+        return rootIds
+            ? rootIds.map(id => this.nodeById.get(id))
+            : Array.from(this.nodeById.values());
     }
     resolveReferences(value) {
         if (value instanceof Array) {
@@ -96,7 +132,7 @@ class ProcessNodeDeserializer {
         }
     }
 }
-export class ProcessNodes {
+export class Serializer {
     constructor() {
         this.classByName = new Map();
         this.nameByClass = new Map();
@@ -108,15 +144,15 @@ export class ProcessNodes {
         this.classByName.set(name, classFunction);
         this.nameByClass.set(classFunction, name);
     }
-    serializeNodes(nodes) {
-        let result = new ProcessNodeSerializer(this);
+    serializeAll(nodes) {
+        let result = new SerializationSession(this);
         for (let node of nodes) {
             result.addNode(node);
         }
         return result.serialize();
     }
-    deserializeNodes(serializedNodes) {
-        return new ProcessNodeDeserializer(this).deserialize(serializedNodes);
+    deserializeAll(serializedNodes) {
+        return new DeserializationSession(this).deserialize(serializedNodes);
     }
     classNameFromInstance(instance) {
         return this.className(instance.constructor);
@@ -128,24 +164,40 @@ export class ProcessNodes {
         return this.classByName.get(name);
     }
 }
-export const processNodes = new ProcessNodes();
-export class ImageProcessingPipeline extends ImageProcessingNode {
+export const globalSerializer = new Serializer();
+export class ImageProcessingPipeline extends ProcessNode {
     constructor(nodes = []) {
         super();
-        this.nodes = nodes;
+        this.ownBridge.model["pipeline"] = nodes;
     }
     async processImage(buffer) {
+        const nodes = this.ownBridge.model["pipeline"];
         for (let node of this.nodes) {
             buffer = await node.processImage(buffer);
         }
         return buffer;
     }
     serialize() {
-        return { "pipeline": this.nodes };
+        return this.ownBridge.exportToModel({ "_super": super.serialize() });
     }
     deserialize(obj) {
-        this.nodes = obj["pipeline"];
+        super.deserialize(obj["_super"]);
+        this.ownBridge.patchModel(obj);
+    }
+    get ownBridge() {
+        if (!this.bridge) {
+            this.bridge = new ModelBridge({ "pipeline": [] }, {
+                "properties": [
+                    {
+                        "name": "pipeline",
+                        "editor": "processNode[]",
+                        "label": "Nodes",
+                    },
+                ],
+            });
+        }
+        return this.bridge;
     }
 }
 ImageProcessingPipeline["className"] = "ImageProcessingPipeline";
-processNodes.addClass(ImageProcessingPipeline);
+globalSerializer.addClass(ImageProcessingPipeline);

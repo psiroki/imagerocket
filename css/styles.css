@@ -82,6 +82,10 @@ body {
   box-shadow: inset 0 1px #fff1;
 }
 
+.processNode .propertyName, .processNode > .title {
+  user-select: none;
+}
+
 .propertySheet {
   list-style: none;
   padding: 0;
@@ -92,6 +96,11 @@ body {
   box-sizing: border-box;
   display: flex;
   align-items: center;
+}
+
+.propertySheet > .propertySheetItem.vertical {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .propertySheet > .propertySheetItem > .propertyName,
@@ -107,8 +116,17 @@ body {
   margin-right: 4px;
 }
 
+.propertySheet > .propertySheetItem.vertical > .propertyName {
+  text-align: center;
+  margin-right: 0;
+}
+
 .propertySheet > .propertySheetItem > .propertyValue {
   margin-left: 4px;
+}
+
+.propertySheet > .propertySheetItem.vertical > .propertyValue {
+  margin-left: 0;
 }
 
 .propertySheet > .propertySheetItem > .propertyValue * {

@@ -1,11 +1,12 @@
-import { extractAlpha, formatColor, rgba } from "../processing/image.js";
+import { extractAlpha, formatColor, rgba, shiftToAlpha, } from "../processing/image.js";
 import { AsyncStream, isNullish, replaceUndefined, } from "../processing/util.js";
+import { ProcessNodeEditor } from "./node_editor.js";
 import { cloneTemplate } from "./templates.js";
 const optionalPattern = /\?$/;
 function bindValues(input, output, formatter) {
     const prefix = output.getAttribute("data-prefix") || "";
     if (!formatter)
-        formatter = (value) => value;
+        formatter = value => value;
     var sync = () => {
         output.value = prefix + formatter(input.value);
     };
@@ -29,12 +30,12 @@ class ExponentialMapper {
     }
     bindBidirectional(exp, real) {
         const result = new AsyncStream();
-        bindValues(exp, real, (s) => {
+        bindValues(exp, real, s => {
             const real = this.mapToReal(+s);
             result.add(real);
             return real.toString();
         });
-        bindValues(real, exp, (s) => {
+        bindValues(real, exp, s => {
             const real = +s;
             result.add(real);
             return this.mapToExp(real).toString();
@@ -50,6 +51,19 @@ class ExponentialMapper {
         return Math.round(Math.exp((exp - this.mappedMin) * this.scale + this.expOffset) -
             (this.offset - this.minValue));
     }
+}
+function setupNumberInputWidth(e) {
+    let bound = Math.max(...[e.min, e.max].map(e => e.length));
+    if (bound === 0)
+        return;
+    let additional = e.step.indexOf(".");
+    if (additional >= 0) {
+        additional = e.step.length - additional;
+    }
+    else {
+        additional = 0;
+    }
+    e.style.width = bound + additional + 3 + "ch";
 }
 export class PropertySheet {
     constructor(bridge) {
@@ -87,6 +101,10 @@ export class PropertySheet {
                 case "boolean":
                     elements = this.createBooleanEditor(item);
                     break;
+                case "processNode[]":
+                    elements = this.createProcessNodeArrayEditor(item);
+                    itemElement.classList.add("vertical");
+                    break;
             }
             if (elements)
                 valueElement.appendChild(elements);
@@ -98,7 +116,8 @@ export class PropertySheet {
     createColorEditor(item) {
         const readOnly = !!item["readOnly"];
         const optional = item["_internal"]["optional"];
-        const container = document.createElement("span");
+        const defaultValue = item["defaultValue"] || shiftToAlpha(255);
+        const container = document.createElement("div");
         container.classList.add("colorEditor");
         const name = item["name"];
         const optionalInput = document.createElement("input");
@@ -123,23 +142,33 @@ export class PropertySheet {
         alphaInput.type = "number";
         alphaInput.min = "0";
         alphaInput.max = "255";
+        setupNumberInputWidth(alphaInput);
         alphaInput.disabled = readOnly;
         const sync = (target, prop) => {
             const raw = target[prop];
             const defined = !isNullish(raw);
-            const color = (!defined ? 0 : raw);
+            const color = (!defined ? defaultValue : raw);
             colorInput.value = formatColor(color).substring(0, 7);
-            alphaRange.value = extractAlpha(color).toString();
+            alphaInput.value = alphaRange.value = extractAlpha(color).toString();
             optionalInput.checked = defined;
+            for (let input of [colorInput, alphaRange, alphaInput]) {
+                input.disabled = !defined;
+            }
         };
         this.bridge.addHandler(name, sync);
         sync(this.model, name);
-        for (let input of [colorInput, alphaRange, alphaInput]) {
-            input.addEventListener("input", (event) => {
+        for (let input of [colorInput, alphaRange, alphaInput, optionalInput]) {
+            input.addEventListener("input", event => {
                 if (event.target === alphaRange)
                     alphaInput.value = alphaRange.value;
                 if (event.target === alphaInput)
                     alphaRange.value = alphaInput.value;
+                if (event.target === optionalInput) {
+                    const disabled = !optionalInput.checked;
+                    for (let otherInput of [colorInput, alphaRange, alphaInput]) {
+                        otherInput.disabled = disabled;
+                    }
+                }
                 if (!readOnly) {
                     if (optional && !optionalInput.checked) {
                         this.bridge.model[name] = null;
@@ -164,7 +193,7 @@ export class PropertySheet {
     }
     createExponentialSlider(item) {
         var _a;
-        const container = document.createElement("span");
+        const container = document.createElement("div");
         container.classList.add("exponentialSlider");
         const name = item["name"];
         const expOffset = (_a = item["expOffset"]) !== null && _a !== void 0 ? _a : 1;
@@ -189,6 +218,7 @@ export class PropertySheet {
         numberInput.type = "number";
         numberInput.min = expMin;
         numberInput.max = expMax;
+        setupNumberInputWidth(numberInput);
         numberInput.disabled = !!item["readOnly"];
         const updateControls = (target, prop) => {
             const val = target[prop];
@@ -197,13 +227,13 @@ export class PropertySheet {
         };
         this.bridge.addHandler(name, updateControls);
         updateControls(this.model, name);
-        mapper.bindBidirectional(rangeInput, numberInput).listen((val) => {
+        mapper.bindBidirectional(rangeInput, numberInput).listen(val => {
             this.bridge.model[name] = isNaN(val) ? 0 : Math.round(val);
         });
         return container;
     }
     createNumberEditor(item, forceInteger) {
-        const container = document.createElement("span");
+        const container = document.createElement("div");
         container.classList.add("numberEditor");
         const optional = item["_internal"]["optional"];
         const name = item["name"];
@@ -219,6 +249,7 @@ export class PropertySheet {
             numberInput.max = max.toString();
         if (typeof step === "number")
             numberInput.step = step.toString();
+        setupNumberInputWidth(numberInput);
         numberInput.disabled = !!item["readOnly"];
         const updateControls = (target, prop) => {
             const val = target[prop];
@@ -226,7 +257,7 @@ export class PropertySheet {
         };
         this.bridge.addHandler(name, updateControls);
         updateControls(this.model, name);
-        numberInput.addEventListener("input", (event) => {
+        numberInput.addEventListener("input", event => {
             let val = +numberInput.value;
             if (isNaN(val)) {
                 val = optional ? null : 0;
@@ -239,9 +270,9 @@ export class PropertySheet {
         return container;
     }
     createBooleanEditor(item) {
-        const container = document.createElement("span");
-        const optional = item["_internal"]["optional"];
+        const container = document.createElement("div");
         container.classList.add("booleanEditor");
+        const optional = item["_internal"]["optional"];
         const name = item["name"];
         const checkbox = document.createElement("input");
         container.appendChild(checkbox);
@@ -249,7 +280,7 @@ export class PropertySheet {
         checkbox.disabled = !!item["readOnly"];
         let lastValue;
         if (optional) {
-            checkbox.addEventListener("click", (event) => {
+            checkbox.addEventListener("click", event => {
                 if (lastValue) {
                     checkbox.checked = true;
                     checkbox.indeterminate = true;
@@ -266,10 +297,59 @@ export class PropertySheet {
         };
         this.bridge.addHandler(name, updateControls);
         updateControls(this.model, name);
-        checkbox.addEventListener("input", (event) => {
+        checkbox.addEventListener("input", event => {
             let val = checkbox.indeterminate ? null : checkbox.checked;
             this.bridge.model[name] = val;
         });
+        return container;
+    }
+    createProcessNodeArrayEditor(item) {
+        // optional and readOnly is not supported
+        const container = document.createElement("div");
+        container.classList.add("processNodeArray");
+        const name = item["name"];
+        const editors = new Map();
+        const updateControls = (target, prop) => {
+            const val = target[prop] || [];
+            const nodes = val.map((e) => e);
+            const nodeById = new Map(nodes.map(p => [p.nodeId, p]));
+            const ids = new Set(nodeById.keys());
+            // remove deleted editors
+            for (let editorId of Array.from(editors.keys())) {
+                if (!ids.has(editorId)) {
+                    editors.get(editorId).editorElement.remove();
+                    editors.delete(editorId);
+                }
+                else {
+                    ids.delete(editorId);
+                }
+            }
+            let lastEditor;
+            for (let node of nodes) {
+                let editor = editors.get(node.nodeId);
+                if (!editor) {
+                    editor = new ProcessNodeEditor(node);
+                    editors.set(node.nodeId, editor);
+                    if (lastEditor) {
+                        container.insertBefore(editor.editorElement, lastEditor.editorElement.nextSibling);
+                    }
+                    else {
+                        container.insertBefore(editor.editorElement, container.firstChild);
+                    }
+                    editor.titleElement.addEventListener("pointerdown", ev => {
+                        const e = ev;
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                    });
+                }
+                if (lastEditor &&
+                    lastEditor.editorElement.nextSibling !== editor.editorElement) {
+                    container.insertBefore(editor.editorElement, lastEditor.editorElement.nextSibling);
+                }
+                lastEditor = editor;
+            }
+        };
+        this.bridge.addHandler(name, updateControls);
+        updateControls(this.model, name);
         return container;
     }
 }
