@@ -1,7 +1,7 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer } from "./image.js";
 import { SimpleProcessNode, globalSerializer, NodeFeature } from "./process_node.js";
-import { isNullish } from "./util.js";
+import { isNullish, replaceNullish } from "./util.js";
 
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
 
@@ -65,14 +65,14 @@ export class SimpleExpander extends SimpleProcessNode {
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
     const expand = this.expand || 0;
     const bridge = this.ownBridge;
-    const overrides = rectSuffixes.map(
-      suffix => bridge.model["override" + suffix] || 0
+    const actual = rectSuffixes.map(
+      suffix => replaceNullish(bridge.model["override" + suffix], expand)
     );
     let rect = Array.from(buffer.cropParameters.cropRect);
     const cropRect = Array.from(rect);
     if (expand > 0) {
       rect = cropRect.map(
-        (e, i) => e + ((i & 2) - 1) * (overrides[i] + expand)
+        (e, i) => e + ((i & 2) - 1) * actual[i]
       );
     }
     buffer.cropParameters.expandedRect = Array.from(rect);
