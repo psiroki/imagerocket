@@ -231,3 +231,11 @@ class CssColorWithLuminosityImpl {
   readonly cssColor: string;
   readonly luminosity: number;
 }
+
+export function createButton(caption: string, clickHandler: {(event: MouseEvent):void}) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = caption;
+  button.addEventListener("click", e => clickHandler.call(this, e));
+  return button;
+}

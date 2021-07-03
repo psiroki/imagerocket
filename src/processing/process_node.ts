@@ -79,7 +79,7 @@ export abstract class ProcessNode extends Serializable {
 
   private _nodeId: number = ++ProcessNode.idCounter;
 
-  private static idCounter: number = Date.now();
+  private static idCounter: number = 0;//Date.now();
 }
 
 export abstract class SimpleProcessNode extends ProcessNode {

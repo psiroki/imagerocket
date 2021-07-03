@@ -20,7 +20,16 @@ export class ProcessNodeEditor {
     this.titleElement = titleElement;
   }
 
+  set itemControls(newControls: Element) {
+    this._itemControls?.remove();
+    this._itemControls = newControls;
+    if (newControls) {
+      this.titleElement.appendChild(newControls);
+    }
+  }
+
   readonly node: ProcessNode;
   readonly editorElement: Element;
   readonly titleElement: Element;
+  private _itemControls: Element | undefined | null;
 }

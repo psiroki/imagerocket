@@ -5,9 +5,14 @@ import {
   rgba,
   shiftToAlpha,
 } from "../processing/image.js";
-import { globalSerializer, ProcessNode, SerializableConstructor } from "../processing/process_node.js";
+import {
+  globalSerializer,
+  ProcessNode,
+  SerializableConstructor,
+} from "../processing/process_node.js";
 import {
   AsyncStream,
+  createButton,
   isNullish,
   replaceNullish,
 } from "../processing/util.js";
@@ -389,6 +394,75 @@ export class PropertySheet {
 
     const editors: Map<number, ProcessNodeEditor> = new Map();
 
+    const createItemControls = (nodeId: number) => {
+      let controls = document.createElement("span");
+      controls.classList.add("itemControls");
+      controls.appendChild(
+        createButton("\u25b2", _ => {
+          // move up
+          const prevList = this.bridge.model[name] as ProcessNode[];
+          const index = prevList.findIndex(e => e.nodeId === nodeId);
+          if (index > 0) {
+            this.bridge.model[name] = prevList
+              .slice(0, index - 1)
+              .concat(
+                [prevList[index], prevList[index - 1]],
+                prevList.slice(index + 1)
+              );
+            updateControls(this.bridge.model, name);
+          }
+        })
+      );
+      controls.appendChild(
+        createButton("\u25bc", _ => {
+          // move down
+          const prevList = this.bridge.model[name] as ProcessNode[];
+          const index = prevList.findIndex(e => e.nodeId === nodeId);
+          if (index >= 0 && index < prevList.length - 1) {
+            this.bridge.model[name] = prevList
+              .slice(0, index)
+              .concat(
+                [prevList[index + 1], prevList[index]],
+                prevList.slice(index + 2)
+              );
+            updateControls(this.bridge.model, name);
+          }
+        })
+      );
+      controls.appendChild(
+        createButton("\u2716", _ => {
+          // delete
+          const prevList = this.bridge.model[name] as ProcessNode[];
+          const index = prevList.findIndex(e => e.nodeId === nodeId);
+          if (index >= 0) {
+            this.bridge.model[name] = prevList
+              .slice(0, index)
+              .concat(prevList.slice(index + 1));
+            updateControls(this.bridge.model, name);
+          }
+        })
+      );
+      return controls;
+    };
+
+    const moveAround = (
+      neighborId: number,
+      grabbedId: number,
+      afterNeighbor: boolean
+    ) => {
+      console.log("moveAfter", neighborId, grabbedId, afterNeighbor);
+      const list = Array.from(this.bridge.model[name] as ProcessNode[]);
+      console.log(list.map(e => e.nodeId));
+      const index = list.findIndex(e => e.nodeId === grabbedId);
+      const removed = list.splice(index, 1);
+      console.log(list.map(e => e.nodeId));
+      const beforeIndex = list.findIndex(e => e.nodeId === neighborId);
+      list.splice(beforeIndex + (afterNeighbor ? 1 : 0), 0, ...removed);
+      console.log(list.map(e => e.nodeId));
+      this.bridge.model[name] = list;
+      updateControls(this.bridge.model, name);
+    };
+
     const updateControls = (target: any, prop: string): void => {
       const val = target[prop] || [];
       const nodes: ProcessNode[] = val.map((e: any) => e as ProcessNode);
@@ -408,6 +482,7 @@ export class PropertySheet {
         let editor = editors.get(node.nodeId);
         if (!editor) {
           editor = new ProcessNodeEditor(node);
+          editor.itemControls = createItemControls(node.nodeId);
           editors.set(node.nodeId, editor);
           if (lastEditor) {
             container.insertBefore(
@@ -417,9 +492,93 @@ export class PropertySheet {
           } else {
             container.insertBefore(editor.editorElement, container.firstChild);
           }
+          let movingSession: any = null;
           editor.titleElement.addEventListener("pointerdown", ev => {
+            if (ev.target !== ev.currentTarget) return;
             const e = ev as PointerEvent;
             (e.currentTarget as Element).setPointerCapture(e.pointerId);
+            movingSession = {
+              pointerId: e.pointerId,
+              x: e.pageX,
+              y: e.pageY,
+            };
+            editor!.editorElement.classList.add("moving");
+          });
+          editor.titleElement.addEventListener("pointerup", ev => {
+            const e = ev as PointerEvent;
+            if (e.pointerId === movingSession?.pointerId) {
+              container.classList.add("refreshing");
+              setTimeout(() => container.classList.remove("refreshing"), 5);
+              for (let ed of editors.values()) {
+                const editor = ed.editorElement as HTMLElement;
+                editor.style.removeProperty("transform");
+              }
+              if (typeof movingSession.snap === "number") {
+                moveAround(
+                  movingSession.snap,
+                  node.nodeId,
+                  movingSession.snapAfter
+                );
+              }
+              movingSession = null;
+              editor!.editorElement.classList.remove("moving");
+            }
+          });
+          editor.titleElement.addEventListener("pointermove", ev => {
+            const e = ev as PointerEvent;
+            if (e.pointerId === movingSession?.pointerId) {
+              const movingElement = editor!.editorElement as HTMLElement;
+              const originalOffsetTop = movingElement.offsetTop;
+              const deltaY = e.pageY - movingSession.y;
+              const virtualOffsetTop = originalOffsetTop + deltaY;
+              const movingHeight = movingElement.offsetHeight;
+              let snap: number = -1;
+              let snapTop: number | null = null;
+              let snapAfter: boolean = false;
+              for (let ed of editors.values()) {
+                const staticElement = ed.editorElement as HTMLElement;
+                if (staticElement === movingElement) continue;
+                const thisOffsetTop = staticElement.offsetTop;
+                const thisOffsetHeight = staticElement.offsetHeight;
+                if (
+                  thisOffsetTop <= virtualOffsetTop &&
+                  thisOffsetTop + thisOffsetHeight > virtualOffsetTop
+                ) {
+                  snap = thisOffsetTop;
+                  if (thisOffsetTop > originalOffsetTop)
+                    snap -= movingHeight - thisOffsetHeight;
+                }
+                if (thisOffsetTop < originalOffsetTop) {
+                  if (thisOffsetTop + thisOffsetHeight - 8 > virtualOffsetTop) {
+                    staticElement.style.transform =
+                      "translate(0, " + movingHeight + "px)";
+                    if (snapTop === null || thisOffsetTop < snapTop) {
+                      snap = ed.node.nodeId;
+                      snapTop = thisOffsetTop;
+                      snapAfter = false;
+                    }
+                  } else {
+                    staticElement.style.transform = "translate(0, 0)";
+                  }
+                }
+                if (thisOffsetTop > originalOffsetTop) {
+                  if (thisOffsetTop < virtualOffsetTop + movingHeight - 8) {
+                    staticElement.style.transform =
+                      "translate(0, " + -movingHeight + "px)";
+                    if (snapTop === null || thisOffsetTop > snapTop) {
+                      snap = ed.node.nodeId;
+                      snapTop = thisOffsetTop;
+                      snapAfter = true;
+                    }
+                  } else {
+                    staticElement.style.transform = "translate(0, 0)";
+                  }
+                }
+              }
+              movingElement.style.transform = "translate(0, " + deltaY + "px)";
+              movingSession.snap = snap >= 0 ? snap : null;
+              movingSession.snapAfter = snapAfter;
+            }
           });
         }
         if (
@@ -451,7 +610,9 @@ export class PropertySheet {
       let addButton = document.createElement("button");
       addButton.textContent = className;
       const create = prototypes.get(className)!;
-      (new create() as ProcessNode).classColorInfo.setupAsBackgroundColor(addButton);
+      (new create() as ProcessNode).classColorInfo.setupAsBackgroundColor(
+        addButton
+      );
       addButton.addEventListener("click", _ => {
         const instance = new create() as ProcessNode;
         this.model[name] = (this.model[name] || []).concat([instance]);
