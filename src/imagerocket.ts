@@ -105,7 +105,8 @@ class ImageRocketApp {
     let buffer: ImageBuffer = new CanvasImageBuffer(canvas);
     const pipeline = this.pipeline;
     console.log(globalSerializer.serializeAll([pipeline]));
-    buffer = await pipeline.processImage(buffer);
+    let resultBuffers: ImageBuffer[] = await pipeline.processImages([buffer]);
+    buffer = resultBuffers[0];
     canvas = util.toHtmlCanvas(buffer.toCanvasImageBuffer().canvas);
     let div = document.createElement("div");
     div.addEventListener("click", (_) => div.remove());

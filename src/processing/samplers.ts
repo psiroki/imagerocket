@@ -1,12 +1,12 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ImageBuffer, Color, platformIsLittleEndian } from "./image.js";
-import { ProcessNode, globalSerializer } from "./process_node.js";
+import { ImageBuffer, Color } from "./image.js";
+import { SimpleProcessNode, globalSerializer } from "./process_node.js";
 import { clamp, isNullish, Optional, toUint32Array } from "./util.js";
 
 /**
  * A sampler extracts a color from the image
  */
-export abstract class BorderColorSampler extends ProcessNode {
+export abstract class BorderColorSampler extends SimpleProcessNode {
   abstract extractColor(image: ImageBuffer): Promise<Color | Optional<Color>>;
 
   async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {

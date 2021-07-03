@@ -1,10 +1,10 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer } from "./image.js";
-import { ProcessNode, globalSerializer } from "./process_node.js";
+import { SimpleProcessNode, globalSerializer } from "./process_node.js";
 
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
 
-export class SimpleExpander extends ProcessNode {
+export class SimpleExpander extends SimpleProcessNode {
   serialize(): object {
     return this.ownBridge.exportToModel({ "_super": super.serialize() });
   }

@@ -2,7 +2,18 @@ import { ImageBuffer } from "./image.js";
 import { ModelBridge } from "../ui/model_bridge.js";
 import { deepCopyJson } from "./util.js";
 
-export type NodeFeatures = "canvas" | "userInteraction" | "passThrough";
+/// The node may be transferred to a worker thread based on the
+/// features it requires.
+/// * `canvas`: if the browser supports `OffScreenCanvas` it may
+///   be transferred to a worker
+/// * `userInteraction`: must not be executed in a worker thread
+///   because DOM access is required
+/// * `passThrough`: the process will not modify the image at all
+///   (processImage is always called though, but the result will
+///   be ignored, useful for display nodes)
+/// * `noEffect`: the node is configured to perform no effect at
+///   all, it can be skipped over
+export type NodeFeatures = "canvas" | "userInteraction" | "passThrough" | "noEffect";
 
 export abstract class Serializable {
   /**
@@ -31,7 +42,16 @@ export abstract class Serializable {
 }
 
 export abstract class ProcessNode extends Serializable {
-  abstract processImage(buffer: ImageBuffer): Promise<ImageBuffer>;
+  abstract processImages(buffers: ImageBuffer[]): Promise<ImageBuffer[]>;
+
+  /// Specify what features the node has to decide wether it can be
+  /// run in a worker or not. The result may change based on the
+  /// node configuration (for example a zero pixel expansion node does
+  /// nothing, it can be a `"noEffect"` node)
+  get features(): Set<NodeFeatures> {
+    return new Set();
+  }
+
   get modelBridge(): ModelBridge | null {
     return this.ownBridge?.pair || null;
   }
@@ -55,6 +75,18 @@ export abstract class ProcessNode extends Serializable {
   private _nodeId: number = ++ProcessNode.idCounter;
 
   private static idCounter: number = Date.now();
+}
+
+export abstract class SimpleProcessNode extends ProcessNode {
+  protected abstract processImage(buffer: ImageBuffer): Promise<ImageBuffer>;
+
+  /// Most nodes operate on one image at a time, but some nodes
+  /// (like collage nodes) would combine or split images. Those
+  /// classes need to override this function and ignore processImage
+  /// altogether.
+  processImages(buffers: ImageBuffer[]): Promise<ImageBuffer[]> {
+    return Promise.all(buffers.map(buffer => this.processImage(buffer)));
+  }
 }
 
 export interface SerializableConstructor {
@@ -220,12 +252,12 @@ export class ImageProcessingPipeline extends ProcessNode {
     this.ownBridge.model["pipeline"] = nodes;
   }
 
-  async processImage(buffer: ImageBuffer): Promise<ImageBuffer> {
+  async processImages(buffers: ImageBuffer[]): Promise<ImageBuffer[]> {
     const nodes: ProcessNode[] = this.ownBridge.model["pipeline"];
     for (let node of this.nodes) {
-      buffer = await node.processImage(buffer);
+      buffers = await node.processImages(buffers);
     }
-    return buffer;
+    return buffers;
   }
 
   serialize(): object {
