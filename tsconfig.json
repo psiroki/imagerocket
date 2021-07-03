@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "ES2015",
+    "module": "ESNEXT",
     "noImplicitAny": false,
     "outDir": "web/js/",
     "sourceMap": false,

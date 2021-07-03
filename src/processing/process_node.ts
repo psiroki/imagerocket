@@ -2,6 +2,8 @@ import { ImageBuffer } from "./image.js";
 import { ModelBridge } from "../ui/model_bridge.js";
 import { deepCopyJson } from "./util.js";
 
+export type NodeFeatures = "canvas" | "userInteraction" | "passThrough";
+
 export abstract class Serializable {
   /**
    * Returns an almost JSON compatible object

@@ -20,67 +20,73 @@ export const colorMask = (() => {
   ctx.fillRect(3, 0, 1, 1);
   const components = new Uint32Array(ctx.getImageData(0, 0, 4, 1).data.buffer);
   const alphaMask = components[3];
-  for (let i = 0; i < 3; ++i)
-    components[i] -= alphaMask;
+  for (let i = 0; i < 3; ++i) components[i] -= alphaMask;
   return {
     components,
     red: components[0],
     green: components[1],
     blue: components[2],
-    alpha: components[3]
+    alpha: components[3],
   };
 })();
+
+// not going to export these, because they're tricky to handle:
+// maskToShift[0xff000000] will not work, because 0xff000000 is
+// interpreted as a double, but maskToShift[0xff000000|0] will
+// work
+const maskToShift = {
+  [0xff]: (val: number) => val,
+  [0xff << 8]: (val: number) => val << 8,
+  [0xff << 16]: (val: number) => val << 16,
+  [0xff << 24]: (val: number) => val << 24,
+};
+
+const maskToExtract = {
+  [0xff]: (val: number) => val & 0xff,
+  [0xff << 8]: (val: number) => (val >>> 8) & 0xff,
+  [0xff << 16]: (val: number) => (val >>> 16) & 0xff,
+  [0xff << 24]: (val: number) => (val >>> 24) & 0xff,
+};
+
 // Hopefully the JIT will inline these functions, I've tried to link
 // them as statically as possible.
+// TODO: make them work in a Worker environment, communicate with the
+// main page (they're going to be initialized asynchronously with root
+// level awaits)
 export const shiftToRed = (() => {
   // Rgba or abgR
-  return colorMask.red === 0xff
-    ? (val: number) => val
-    : (val: number) => val << 24;
+  return maskToShift[colorMask.red|0];
 })();
 export const shiftToGreen = (() => {
   // rGba or abGr
-  return colorMask.green === 0xff00
-    ? (val: number) => val << 8
-    : (val: number) => val << 16;
+  return maskToShift[colorMask.green|0];
 })();
 export const shiftToBlue = (() => {
   // rgBa or aBgr
-  return colorMask.blue === 0xff00
-    ? (val: number) => val << 8
-    : (val: number) => val << 16;
+  return maskToShift[colorMask.blue|0];
 })();
 export const shiftToAlpha = (() => {
   // rgbA or Abgr
-  return colorMask.alpha === 0xff
-    ? (val: number) => val
-    : (val: number) => val << 24;
+  return maskToShift[colorMask.alpha|0];
 })();
 
 export const extractRed = (() => {
   // Rgba or abgR
-  return colorMask.red === 0xff
-    ? (val: number) => val & 0xff
-    : (val: number) => val >>> 24 & 0xff;
+  return maskToExtract[colorMask.red|0];
 })();
 export const extractGreen = (() => {
   // rGba or abGr
-  return colorMask.green === 0xff00
-    ? (val: number) => val >>> 8 & 0xff
-    : (val: number) => val >>> 16 & 0xff;
+  return maskToExtract[colorMask.green|0];
 })();
 export const extractBlue = (() => {
   // rgBa or aBgr
-  return colorMask.blue === 0xff00
-    ? (val: number) => val >>> 8 & 0xff
-    : (val: number) => val >>> 16 & 0xff;
+  return maskToExtract[colorMask.blue|0];
 })();
 export const extractAlpha = (() => {
   // rgbA or Abgr
-  return colorMask.alpha === 0xff
-    ? (val: number) => val & 0xff
-    : (val: number) => val >>> 24 & 0xff;
+  return maskToExtract[colorMask.alpha|0];
 })();
+
 export function rgba(r: number, g: number, b: number, a: number): number {
   return shiftToRed(r) | shiftToGreen(g) | shiftToBlue(b) | shiftToAlpha(a);
 }
@@ -91,23 +97,39 @@ export const platformIsLittleEndian = (() => {
 })();
 
 export function formatColor(c: Color): string {
-  return "#" + [extractRed(c), extractGreen(c), extractBlue(c), extractAlpha(c)]
-    .map(n => n.toString(16).padStart(2, "0"))
-    .join("");
+  return (
+    "#" +
+    [extractRed(c), extractGreen(c), extractBlue(c), extractAlpha(c)]
+      .map(n => n.toString(16).padStart(2, "0"))
+      .join("")
+  );
 }
 
 export interface CanvasFactory {
   (): HTMLCanvasElement | OffscreenCanvas;
 }
 
-export const defaultCanvasFactory: CanvasFactory =
-  () => document.createElement("canvas");
+export const canvasCapableEnvironment = !!(self.document || self.OffscreenCanvas);
+
+export const offscreenCanvasFactory: CanvasFactory = self.OffscreenCanvas
+  ? () => new OffscreenCanvas(300, 150)
+  : () => {
+      throw new Error("Environment has no canvas capability");
+    };
+
+export const defaultCanvasFactory: CanvasFactory = self.document
+  ? () => document.createElement("canvas")
+  : offscreenCanvasFactory;
 
 export class CropParameters {
   constructor(copyFrom?: CropParameters) {
     if (copyFrom) {
-      this._cropRect = copyFrom._cropRect ? Array.from(copyFrom._cropRect) : null;
-      this._expandedRect = copyFrom._expandedRect ? Array.from(copyFrom._expandedRect) : null;
+      this._cropRect = copyFrom._cropRect
+        ? Array.from(copyFrom._cropRect)
+        : null;
+      this._expandedRect = copyFrom._expandedRect
+        ? Array.from(copyFrom._expandedRect)
+        : null;
       this.color = copyFrom.color;
     }
   }
@@ -136,9 +158,11 @@ export class CropParameters {
   }
 
   toString(): string {
-    return [formatColor(this.color), this._cropRect, this.expandedRect].join("; ");
+    return [formatColor(this.color), this._cropRect, this.expandedRect].join(
+      "; "
+    );
   }
-  
+
   color: Color = colorMask.alpha; // opaque black
 
   private _cropRect: number[] | null = null;
@@ -154,10 +178,14 @@ export abstract class ImageBuffer {
   }
   abstract get pitch(): number;
   abstract toByteImageBuffer(): ByteImageBuffer;
-  toCanvasImageBuffer(canvasFactory: CanvasFactory = defaultCanvasFactory): CanvasImageBuffer {
+  toCanvasImageBuffer(
+    canvasFactory: CanvasFactory = defaultCanvasFactory
+  ): CanvasImageBuffer {
     return this._toCanvasImageBuffer(canvasFactory);
   }
-  protected abstract _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer;
+  protected abstract _toCanvasImageBuffer(
+    canvasFactory: CanvasFactory
+  ): CanvasImageBuffer;
 
   get cropParameters(): CropParameters {
     if (!this._cropParameters) {
@@ -175,7 +203,7 @@ export abstract class ImageBuffer {
 
 export class ByteImageBuffer extends ImageBuffer {
   static allocate(width: number, height: number): ByteImageBuffer {
-    const bytes = new DataView(new ArrayBuffer(width*height << 2));
+    const bytes = new DataView(new ArrayBuffer((width * height) << 2));
     return new ByteImageBuffer(bytes, width, height, width << 2);
   }
 
@@ -212,9 +240,17 @@ export class ByteImageBuffer extends ImageBuffer {
     canvas.width = this._width;
     canvas.height = this._height;
     const bytes = this._bytes;
-    canvas.getContext("2d")!.putImageData(
-      new ImageData(util.toUint8ClampedArray(bytes), this._pitch >> 2, this._height),
-      0, 0);
+    canvas
+      .getContext("2d")!
+      .putImageData(
+        new ImageData(
+          util.toUint8ClampedArray(bytes),
+          this._pitch >> 2,
+          this._height
+        ),
+        0,
+        0
+      );
     const buffer = new CanvasImageBuffer(canvas);
     buffer.cropParameters = this.cropParameters;
     return buffer;
@@ -254,20 +290,27 @@ export class CanvasImageBuffer extends ImageBuffer {
   }
 
   toByteImageBuffer(): ByteImageBuffer {
-    const buffer = new ByteImageBuffer(this.bytes, this.width, this.height, this.pitch);
+    const buffer = new ByteImageBuffer(
+      this.bytes,
+      this.width,
+      this.height,
+      this.pitch
+    );
     buffer.cropParameters = this.cropParameters;
     return buffer;
   }
 
   _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer {
     const newCanvas = canvasFactory();
-    if (newCanvas instanceof HTMLCanvasElement === this._canvas instanceof HTMLCanvasElement) {
+    if (
+      newCanvas instanceof HTMLCanvasElement ===
+      this._canvas instanceof HTMLCanvasElement
+    ) {
       return this;
     } else {
       newCanvas.width = this._canvas.width;
       newCanvas.height = this._canvas.height;
-      newCanvas.getContext("2d")!.drawImage(this._canvas,
-        0, 0);
+      newCanvas.getContext("2d")!.drawImage(this._canvas, 0, 0);
       const buffer = new CanvasImageBuffer(newCanvas);
       buffer.cropParameters = this.cropParameters;
       return buffer;
@@ -279,8 +322,9 @@ export class CanvasImageBuffer extends ImageBuffer {
   }
 
   private _canvas: HTMLCanvasElement | OffscreenCanvas;
-  private _context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  private _context:
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D;
   private _data: ImageData;
   private _bytes: DataView;
 }
-
