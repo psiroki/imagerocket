@@ -613,6 +613,7 @@ export class PropertySheet {
         const instance = new create() as ProcessNode;
         this.model[name] = (this.model[name] || []).concat([instance]);
         updateControls(this.model, name);
+        addPanel.scrollIntoView();
       });
       addPanel.appendChild(addButton);
     }
