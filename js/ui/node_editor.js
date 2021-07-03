@@ -18,4 +18,12 @@ export class ProcessNodeEditor {
         colorHashString(title, 0.5).setupAsBackgroundColor(titleElement);
         this.titleElement = titleElement;
     }
+    set itemControls(newControls) {
+        var _a;
+        (_a = this._itemControls) === null || _a === void 0 ? void 0 : _a.remove();
+        this._itemControls = newControls;
+        if (newControls) {
+            this.titleElement.appendChild(newControls);
+        }
+    }
 }

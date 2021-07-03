@@ -144,3 +144,10 @@ class CssColorWithLuminosityImpl {
         element.style.color = this.luminosity >= 128 ? "black" : "white";
     }
 }
+export function createButton(caption, clickHandler) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = caption;
+    button.addEventListener("click", e => clickHandler.call(this, e));
+    return button;
+}

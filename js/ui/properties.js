@@ -1,6 +1,6 @@
 import { extractAlpha, formatColor, rgba, shiftToAlpha, } from "../processing/image.js";
-import { globalSerializer, ProcessNode } from "../processing/process_node.js";
-import { AsyncStream, isNullish, replaceNullish, } from "../processing/util.js";
+import { globalSerializer, ProcessNode, } from "../processing/process_node.js";
+import { AsyncStream, createButton, isNullish, replaceNullish, } from "../processing/util.js";
 import { ProcessNodeEditor } from "./node_editor.js";
 import { cloneTemplate } from "./templates.js";
 const optionalPattern = /\?$/;
@@ -310,6 +310,53 @@ export class PropertySheet {
         container.classList.add("processNodeArray");
         const name = item["name"];
         const editors = new Map();
+        const createItemControls = (nodeId) => {
+            let controls = document.createElement("span");
+            controls.classList.add("itemControls");
+            controls.appendChild(createButton("\u25b2", _ => {
+                // move up
+                const prevList = this.bridge.model[name];
+                const index = prevList.findIndex(e => e.nodeId === nodeId);
+                if (index > 0) {
+                    this.bridge.model[name] = prevList
+                        .slice(0, index - 1)
+                        .concat([prevList[index], prevList[index - 1]], prevList.slice(index + 1));
+                    updateControls(this.bridge.model, name);
+                }
+            }));
+            controls.appendChild(createButton("\u25bc", _ => {
+                // move down
+                const prevList = this.bridge.model[name];
+                const index = prevList.findIndex(e => e.nodeId === nodeId);
+                if (index >= 0 && index < prevList.length - 1) {
+                    this.bridge.model[name] = prevList
+                        .slice(0, index)
+                        .concat([prevList[index + 1], prevList[index]], prevList.slice(index + 2));
+                    updateControls(this.bridge.model, name);
+                }
+            }));
+            controls.appendChild(createButton("\u2716", _ => {
+                // delete
+                const prevList = this.bridge.model[name];
+                const index = prevList.findIndex(e => e.nodeId === nodeId);
+                if (index >= 0) {
+                    this.bridge.model[name] = prevList
+                        .slice(0, index)
+                        .concat(prevList.slice(index + 1));
+                    updateControls(this.bridge.model, name);
+                }
+            }));
+            return controls;
+        };
+        const moveAround = (neighborId, grabbedId, afterNeighbor) => {
+            const list = Array.from(this.bridge.model[name]);
+            const index = list.findIndex(e => e.nodeId === grabbedId);
+            const removed = list.splice(index, 1);
+            const beforeIndex = list.findIndex(e => e.nodeId === neighborId);
+            list.splice(beforeIndex + (afterNeighbor ? 1 : 0), 0, ...removed);
+            this.bridge.model[name] = list;
+            updateControls(this.bridge.model, name);
+        };
         const updateControls = (target, prop) => {
             const val = target[prop] || [];
             const nodes = val.map((e) => e);
@@ -330,6 +377,7 @@ export class PropertySheet {
                 let editor = editors.get(node.nodeId);
                 if (!editor) {
                     editor = new ProcessNodeEditor(node);
+                    editor.itemControls = createItemControls(node.nodeId);
                     editors.set(node.nodeId, editor);
                     if (lastEditor) {
                         container.insertBefore(editor.editorElement, lastEditor.editorElement.nextSibling);
@@ -337,9 +385,91 @@ export class PropertySheet {
                     else {
                         container.insertBefore(editor.editorElement, container.firstChild);
                     }
+                    let movingSession = null;
                     editor.titleElement.addEventListener("pointerdown", ev => {
+                        if (ev.target !== ev.currentTarget)
+                            return;
                         const e = ev;
                         e.currentTarget.setPointerCapture(e.pointerId);
+                        movingSession = {
+                            pointerId: e.pointerId,
+                            x: e.pageX,
+                            y: e.pageY,
+                        };
+                        editor.editorElement.classList.add("moving");
+                    });
+                    editor.titleElement.addEventListener("pointerup", ev => {
+                        const e = ev;
+                        if (e.pointerId === (movingSession === null || movingSession === void 0 ? void 0 : movingSession.pointerId)) {
+                            container.classList.add("refreshing");
+                            setTimeout(() => container.classList.remove("refreshing"), 5);
+                            for (let ed of editors.values()) {
+                                const editor = ed.editorElement;
+                                editor.style.removeProperty("transform");
+                            }
+                            if (typeof movingSession.snap === "number") {
+                                moveAround(movingSession.snap, node.nodeId, movingSession.snapAfter);
+                            }
+                            movingSession = null;
+                            editor.editorElement.classList.remove("moving");
+                        }
+                    });
+                    editor.titleElement.addEventListener("pointermove", ev => {
+                        const e = ev;
+                        if (e.pointerId === (movingSession === null || movingSession === void 0 ? void 0 : movingSession.pointerId)) {
+                            const movingElement = editor.editorElement;
+                            const originalOffsetTop = movingElement.offsetTop;
+                            const deltaY = e.pageY - movingSession.y;
+                            const virtualOffsetTop = originalOffsetTop + deltaY;
+                            const movingHeight = movingElement.offsetHeight;
+                            let snap = -1;
+                            let snapTop = null;
+                            let snapAfter = false;
+                            for (let ed of editors.values()) {
+                                const staticElement = ed.editorElement;
+                                if (staticElement === movingElement)
+                                    continue;
+                                const thisOffsetTop = staticElement.offsetTop;
+                                const thisOffsetHeight = staticElement.offsetHeight;
+                                if (thisOffsetTop <= virtualOffsetTop &&
+                                    thisOffsetTop + thisOffsetHeight > virtualOffsetTop) {
+                                    snap = thisOffsetTop;
+                                    if (thisOffsetTop > originalOffsetTop)
+                                        snap -= movingHeight - thisOffsetHeight;
+                                }
+                                if (thisOffsetTop < originalOffsetTop) {
+                                    if (thisOffsetTop + thisOffsetHeight - 8 > virtualOffsetTop) {
+                                        staticElement.style.transform =
+                                            "translate(0, " + movingHeight + "px)";
+                                        if (snapTop === null || thisOffsetTop < snapTop) {
+                                            snap = ed.node.nodeId;
+                                            snapTop = thisOffsetTop;
+                                            snapAfter = false;
+                                        }
+                                    }
+                                    else {
+                                        staticElement.style.transform = "translate(0, 0)";
+                                    }
+                                }
+                                if (thisOffsetTop > originalOffsetTop) {
+                                    if (thisOffsetTop < virtualOffsetTop + movingHeight - 8) {
+                                        staticElement.style.transform =
+                                            "translate(0, " + -movingHeight + "px)";
+                                        if (snapTop === null || thisOffsetTop > snapTop) {
+                                            snap = ed.node.nodeId;
+                                            snapTop = thisOffsetTop;
+                                            snapAfter = true;
+                                        }
+                                    }
+                                    else {
+                                        staticElement.style.transform = "translate(0, 0)";
+                                    }
+                                }
+                            }
+                            movingElement.style.transform = "translate(0, " + deltaY + "px)";
+                            movingSession.snap = snap >= 0 ? snap : null;
+                            movingSession.snapAfter = snapAfter;
+                        }
                     });
                 }
                 if (lastEditor &&

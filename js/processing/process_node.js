@@ -39,7 +39,7 @@ export class ProcessNode extends Serializable {
         return this._nodeId;
     }
 }
-ProcessNode.idCounter = Date.now();
+ProcessNode.idCounter = 0; //Date.now();
 export class SimpleProcessNode extends ProcessNode {
     /// Most nodes operate on one image at a time, but some nodes
     /// (like collage nodes) would combine or split images. Those

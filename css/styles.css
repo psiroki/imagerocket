@@ -69,6 +69,13 @@ body {
   margin: 8px;
   font-size: 11.5pt;
   max-width: 640px;
+  transition: transform 0.1s ease-in-out;
+  background-color: #444;
+}
+
+.processNode.moving {
+  transition: none;
+  z-index: 1;
 }
 
 .processNode > .title {
@@ -76,6 +83,7 @@ body {
   padding: 8px;
   box-shadow: inset 0 0 5px #0008;
   border-radius: 3px 3px 0 0;  
+  position: relative;
 }
 
 .processNode > .contents {
@@ -84,6 +92,15 @@ body {
 
 .processNode .propertyName, .processNode > .title {
   user-select: none;
+}
+
+.processNodeArray {
+  display: flex;
+  flex-direction: column;
+}
+
+.processNodeArray.refreshing > .processNode {
+  transition: none;
 }
 
 .propertySheet {
@@ -171,4 +188,33 @@ body {
   transform: translate(0, 2px);
   box-shadow: inset 0 0 5px #0008, 0 0 5px #0004;
   background-image: linear-gradient(to top, #fff2, #0002);
+}
+
+.itemControls {
+  position: absolute;
+  right: 4px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+.itemControls > button {
+  background: none;
+  opacity: 0.5;
+  color: inherit;
+  border: 1px solid;
+  margin: 2px;
+  border-radius: 9px;
+  line-height: 12px;
+  padding-bottom: 1px;
+  box-sizing: border-box;
+  width: 26px;
+  height: 20px;
+  transition: transform 0.1s ease-in-out;
+}
+
+.itemControls > button:active {
+  opacity: 1;
+  transform: scale(1.15);
 }
