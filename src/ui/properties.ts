@@ -491,6 +491,7 @@ export class PropertySheet {
           let movingSession: any = null;
           editor.titleElement.addEventListener("pointerdown", ev => {
             if (ev.target !== ev.currentTarget) return;
+            ev.preventDefault();
             const e = ev as PointerEvent;
             (e.currentTarget as Element).setPointerCapture(e.pointerId);
             movingSession = {
@@ -515,6 +516,19 @@ export class PropertySheet {
                   node.nodeId,
                   movingSession.snapAfter
                 );
+              }
+              movingSession = null;
+              editor!.editorElement.classList.remove("moving");
+            }
+          });
+          editor.titleElement.addEventListener("pointercancel", ev => {
+            const e = ev as PointerEvent;
+            if (e.pointerId === movingSession?.pointerId) {
+              container.classList.add("refreshing");
+              setTimeout(() => container.classList.remove("refreshing"), 5);
+              for (let ed of editors.values()) {
+                const editor = ed.editorElement as HTMLElement;
+                editor.style.removeProperty("transform");
               }
               movingSession = null;
               editor!.editorElement.classList.remove("moving");
