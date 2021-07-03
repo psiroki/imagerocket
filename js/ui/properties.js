@@ -389,6 +389,7 @@ export class PropertySheet {
                     editor.titleElement.addEventListener("pointerdown", ev => {
                         if (ev.target !== ev.currentTarget)
                             return;
+                        ev.preventDefault();
                         const e = ev;
                         e.currentTarget.setPointerCapture(e.pointerId);
                         movingSession = {
@@ -409,6 +410,19 @@ export class PropertySheet {
                             }
                             if (typeof movingSession.snap === "number") {
                                 moveAround(movingSession.snap, node.nodeId, movingSession.snapAfter);
+                            }
+                            movingSession = null;
+                            editor.editorElement.classList.remove("moving");
+                        }
+                    });
+                    editor.titleElement.addEventListener("pointercancel", ev => {
+                        const e = ev;
+                        if (e.pointerId === (movingSession === null || movingSession === void 0 ? void 0 : movingSession.pointerId)) {
+                            container.classList.add("refreshing");
+                            setTimeout(() => container.classList.remove("refreshing"), 5);
+                            for (let ed of editors.values()) {
+                                const editor = ed.editorElement;
+                                editor.style.removeProperty("transform");
                             }
                             movingSession = null;
                             editor.editorElement.classList.remove("moving");
