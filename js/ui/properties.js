@@ -499,6 +499,7 @@ export class PropertySheet {
                 const instance = new create();
                 this.model[name] = (this.model[name] || []).concat([instance]);
                 updateControls(this.model, name);
+                addPanel.scrollIntoView();
             });
             addPanel.appendChild(addButton);
         }
