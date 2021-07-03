@@ -20,8 +20,8 @@ export function toHtmlCanvas(canvas) {
         return result;
     }
 }
-export function replaceUndefined(val, replacement) {
-    return typeof val === "undefined" ? replacement : val;
+export function replaceNullish(val, replacement) {
+    return isNullish(val) ? replacement : val;
 }
 export function isNullish(val) {
     return typeof val === "undefined" || val === null;
@@ -138,5 +138,9 @@ class CssColorWithLuminosityImpl {
     constructor(cssColor, luminosity) {
         this.cssColor = cssColor;
         this.luminosity = luminosity;
+    }
+    setupAsBackgroundColor(element) {
+        element.style.backgroundColor = this.cssColor;
+        element.style.color = this.luminosity >= 128 ? "black" : "white";
     }
 }

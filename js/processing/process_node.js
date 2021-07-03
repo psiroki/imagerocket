@@ -1,5 +1,5 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { deepCopyJson } from "./util.js";
+import { colorHashString, deepCopyJson } from "./util.js";
 export class Serializable {
     serializedClone() {
         const arr = globalSerializer.deserializeAll(deepCopyJson(globalSerializer.serializeAll([this])));
@@ -10,6 +10,10 @@ export class ProcessNode extends Serializable {
     constructor() {
         super(...arguments);
         this._nodeId = ++ProcessNode.idCounter;
+    }
+    get classColorInfo() {
+        const className = globalSerializer.classNameFromInstance(this);
+        return colorHashString(className, 0.5);
     }
     /// Specify what features the node has to decide wether it can be
     /// run in a worker or not. The result may change based on the
@@ -148,6 +152,12 @@ class DeserializationSession {
         }
     }
 }
+export class SerializableClass {
+    constructor(name, create) {
+        this.name = name;
+        this.create = create;
+    }
+}
 export class Serializer {
     constructor() {
         this.classByName = new Map();
@@ -159,6 +169,11 @@ export class Serializer {
             name = (_a = classFunction["className"]) !== null && _a !== void 0 ? _a : classFunction.name;
         this.classByName.set(name, classFunction);
         this.nameByClass.set(classFunction, name);
+    }
+    *enumerateClasses() {
+        for (let entry of this.classByName.entries()) {
+            yield new SerializableClass(entry[0], entry[1]);
+        }
     }
     serializeAll(nodes) {
         let result = new SerializationSession(this);

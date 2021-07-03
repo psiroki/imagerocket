@@ -14,6 +14,11 @@ export class SimpleExpander extends SimpleProcessNode {
         this.expand = obj["expand"];
         this.ownBridge.patchModel(obj);
     }
+    get features() {
+        const bridge = this.ownBridge;
+        const expands = [this.expand || 0, ...rectSuffixes.map(suffix => bridge.model["override" + suffix] || 0)];
+        return new Set(expands.some(e => e) ? [] : ["noEffect"]);
+    }
     get ownBridge() {
         if (!this.bridge) {
             this.bridge = new ModelBridge({ "expand": this.expand }, {

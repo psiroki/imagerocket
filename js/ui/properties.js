@@ -1,5 +1,6 @@
 import { extractAlpha, formatColor, rgba, shiftToAlpha, } from "../processing/image.js";
-import { AsyncStream, isNullish, replaceUndefined, } from "../processing/util.js";
+import { globalSerializer, ProcessNode } from "../processing/process_node.js";
+import { AsyncStream, isNullish, replaceNullish, } from "../processing/util.js";
 import { ProcessNodeEditor } from "./node_editor.js";
 import { cloneTemplate } from "./templates.js";
 const optionalPattern = /\?$/;
@@ -253,7 +254,7 @@ export class PropertySheet {
         numberInput.disabled = !!item["readOnly"];
         const updateControls = (target, prop) => {
             const val = target[prop];
-            numberInput.value = replaceUndefined(val, "").toString();
+            numberInput.value = replaceNullish(val, "").toString();
         };
         this.bridge.addHandler(name, updateControls);
         updateControls(this.model, name);
@@ -350,6 +351,28 @@ export class PropertySheet {
         };
         this.bridge.addHandler(name, updateControls);
         updateControls(this.model, name);
+        const addPanel = document.createElement("div");
+        addPanel.classList.add("addPanel");
+        const prototypes = new Map();
+        for (let entry of globalSerializer.enumerateClasses()) {
+            let obj = new entry.create();
+            if (obj instanceof ProcessNode) {
+                prototypes.set(entry.name, entry.create);
+            }
+        }
+        for (let className of Array.from(prototypes.keys()).sort()) {
+            let addButton = document.createElement("button");
+            addButton.textContent = className;
+            const create = prototypes.get(className);
+            new create().classColorInfo.setupAsBackgroundColor(addButton);
+            addButton.addEventListener("click", _ => {
+                const instance = new create();
+                this.model[name] = (this.model[name] || []).concat([instance]);
+                updateControls(this.model, name);
+            });
+            addPanel.appendChild(addButton);
+        }
+        container.appendChild(addPanel);
         return container;
     }
 }

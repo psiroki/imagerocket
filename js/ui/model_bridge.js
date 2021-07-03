@@ -1,4 +1,4 @@
-import { replaceUndefined } from "../processing/util.js";
+import { replaceNullish } from "../processing/util.js";
 export class ModelBridge {
     constructor(model, schema, { inputObserver, outputObserver, } = {}) {
         this.rawModel = model;
@@ -34,7 +34,7 @@ export class ModelBridge {
         const properties = this.schema["properties"];
         if (properties instanceof Array) {
             return properties
-                .filter((e) => replaceUndefined(e["serializable"], true))
+                .filter((e) => replaceNullish(e["serializable"], true))
                 .map((e) => e["name"]);
         }
         else {

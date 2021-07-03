@@ -117,6 +117,10 @@ export class ManualColor extends BorderColorSampler {
     constructor() {
         super();
     }
+    get features() {
+        let color = this.ownBridge.model["color"];
+        return new Set(isNullish(color) ? ["noEffect"] : []);
+    }
     extractColor(image) {
         let color = this.ownBridge.model["color"];
         if (isNullish(color))

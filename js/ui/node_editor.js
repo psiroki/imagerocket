@@ -15,9 +15,7 @@ export class ProcessNodeEditor {
         }
         const titleElement = this.editorElement.querySelector(".title");
         titleElement.textContent = title;
-        const colorInfo = colorHashString(title, 0.5);
-        titleElement.style.backgroundColor = colorInfo.cssColor;
-        titleElement.style.color = colorInfo.luminosity >= 128 ? "black" : "white";
+        colorHashString(title, 0.5).setupAsBackgroundColor(titleElement);
         this.titleElement = titleElement;
     }
 }
