@@ -134,6 +134,8 @@ export function deepCopyJson(val: any): any {
 export interface CssColorWithLuminosity {
   readonly cssColor: string;
   readonly luminosity: number;
+
+  setupAsBackgroundColor(element: HTMLElement): void;
 }
 
 function _reverse(i: number): number {
@@ -219,6 +221,11 @@ class CssColorWithLuminosityImpl {
   constructor(cssColor: string, luminosity: number) {
     this.cssColor = cssColor;
     this.luminosity = luminosity;
+  }
+
+  setupAsBackgroundColor(element: HTMLElement): void {
+    element.style.backgroundColor = this.cssColor;
+    element.style.color = this.luminosity >= 128 ? "black" : "white";
   }
 
   readonly cssColor: string;

@@ -1,6 +1,6 @@
 import { ImageBuffer } from "./image.js";
 import { ModelBridge } from "../ui/model_bridge.js";
-import { deepCopyJson } from "./util.js";
+import { colorHashString, CssColorWithLuminosity, deepCopyJson } from "./util.js";
 
 /// The node may be transferred to a worker thread based on the
 /// features it requires.
@@ -13,7 +13,7 @@ import { deepCopyJson } from "./util.js";
 ///   be ignored, useful for display nodes)
 /// * `noEffect`: the node is configured to perform no effect at
 ///   all, it can be skipped over
-export type NodeFeatures = "canvas" | "userInteraction" | "passThrough" | "noEffect";
+export type NodeFeature = "canvas" | "userInteraction" | "passThrough" | "noEffect";
 
 export abstract class Serializable {
   /**
@@ -44,11 +44,16 @@ export abstract class Serializable {
 export abstract class ProcessNode extends Serializable {
   abstract processImages(buffers: ImageBuffer[]): Promise<ImageBuffer[]>;
 
+  get classColorInfo(): CssColorWithLuminosity {
+    const className = globalSerializer.classNameFromInstance(this);
+    return colorHashString(className, 0.5);
+  }
+
   /// Specify what features the node has to decide wether it can be
   /// run in a worker or not. The result may change based on the
   /// node configuration (for example a zero pixel expansion node does
   /// nothing, it can be a `"noEffect"` node)
-  get features(): Set<NodeFeatures> {
+  get features(): Set<NodeFeature> {
     return new Set();
   }
 
@@ -207,11 +212,27 @@ class DeserializationSession {
   private nodeById: Map<string, Serializable> = new Map();
 }
 
+export class SerializableClass {
+  constructor(name: string, create: SerializableConstructor) {
+    this.name = name;
+    this.create = create;
+  }
+
+  readonly name: string;
+  readonly create: SerializableConstructor;
+}
+
 export class Serializer {
   addClass(classFunction: SerializableConstructor, name: string = "") {
     if (name === "") name = classFunction["className"] ?? classFunction.name;
     this.classByName.set(name, classFunction);
     this.nameByClass.set(classFunction, name);
+  }
+
+  *enumerateClasses(): Iterable<SerializableClass> {
+    for (let entry of this.classByName.entries()) {
+      yield new SerializableClass(entry[0], entry[1]);
+    }
   }
 
   serializeAll(nodes: Serializable[]): object[] {

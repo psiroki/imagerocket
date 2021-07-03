@@ -5,7 +5,7 @@ import {
   rgba,
   shiftToAlpha,
 } from "../processing/image.js";
-import { ProcessNode } from "../processing/process_node.js";
+import { globalSerializer, ProcessNode } from "../processing/process_node.js";
 import {
   AsyncStream,
   isNullish,
@@ -388,6 +388,23 @@ export class PropertySheet {
     const name = item["name"];
 
     const editors: Map<number, ProcessNodeEditor> = new Map();
+
+    const addPanel = document.createElement("div");
+    addPanel.classList.add("addPanel");
+    const prototypes: Map<string, ProcessNode> = new Map();
+    for (let entry of globalSerializer.enumerateClasses()) {
+      let obj = new entry.create();
+      if (obj instanceof ProcessNode) {
+        prototypes.set(entry.name, obj);
+      }
+    }
+    for (let className of Array.from(prototypes.keys()).sort()) {
+      let addButton = document.createElement("button");
+      addButton.textContent = className;
+      prototypes.get(className)!.classColorInfo.setupAsBackgroundColor(addButton);
+      addPanel.appendChild(addButton);
+    }
+    container.appendChild(addPanel);
 
     const updateControls = (target: any, prop: string): void => {
       const val = target[prop] || [];

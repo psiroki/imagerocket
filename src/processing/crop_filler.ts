@@ -4,7 +4,7 @@ import {
   ImageBuffer,
   CropParameters,
 } from "./image.js";
-import { SimpleProcessNode, globalSerializer } from "./process_node.js";
+import { SimpleProcessNode, globalSerializer, NodeFeature } from "./process_node.js";
 import * as util from "./util.js";
 
 export class BorderColorFiller extends SimpleProcessNode {

@@ -1,6 +1,7 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer } from "./image.js";
-import { SimpleProcessNode, globalSerializer } from "./process_node.js";
+import { SimpleProcessNode, globalSerializer, NodeFeature } from "./process_node.js";
+import { isNullish } from "./util.js";
 
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
 
@@ -13,6 +14,14 @@ export class SimpleExpander extends SimpleProcessNode {
     super.deserialize(obj["_super"]);
     this.expand = obj["expand"];
     this.ownBridge.patchModel(obj);
+  }
+
+  get features(): Set<NodeFeature> {
+    const bridge = this.ownBridge;
+    const expands = [this.expand || 0, ...rectSuffixes.map(
+      suffix => bridge.model["override" + suffix] || 0
+    )];
+    return new Set(expands.some(e => e) ? [] : ["noEffect"]);
   }
 
   get ownBridge(): ModelBridge {

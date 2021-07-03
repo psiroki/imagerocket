@@ -1,6 +1,6 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer, Color } from "./image.js";
-import { SimpleProcessNode, globalSerializer } from "./process_node.js";
+import { SimpleProcessNode, globalSerializer, NodeFeature } from "./process_node.js";
 import { clamp, isNullish, Optional, toUint32Array } from "./util.js";
 
 /**
@@ -136,6 +136,11 @@ globalSerializer.addClass(PointSampler);
 export class ManualColor extends BorderColorSampler {
   constructor() {
     super();
+  }
+
+  get features(): Set<NodeFeature> {
+    let color = this.ownBridge.model["color"];
+    return new Set(isNullish(color) ? ["noEffect"] : []);
   }
 
   extractColor(image: ImageBuffer): Promise<Color | Optional<Color>> {
