@@ -254,7 +254,7 @@ export class ImageProcessingPipeline extends ProcessNode {
 
   async processImages(buffers: ImageBuffer[]): Promise<ImageBuffer[]> {
     const nodes: ProcessNode[] = this.ownBridge.model["pipeline"];
-    for (let node of this.nodes) {
+    for (let node of nodes) {
       buffers = await node.processImages(buffers);
     }
     return buffers;
@@ -288,8 +288,6 @@ export class ImageProcessingPipeline extends ProcessNode {
   }
 
   private bridge?: ModelBridge;
-
-  private nodes: ProcessNode[];
 }
 
 ImageProcessingPipeline["className"] = "ImageProcessingPipeline";
