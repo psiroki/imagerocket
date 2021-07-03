@@ -1,7 +1,7 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ProcessNode, globalSerializer } from "./process_node.js";
+import { SimpleProcessNode, globalSerializer } from "./process_node.js";
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
-export class SimpleExpander extends ProcessNode {
+export class SimpleExpander extends SimpleProcessNode {
     constructor() {
         super(...arguments);
         this.expand = 0;

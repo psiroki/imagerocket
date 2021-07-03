@@ -21,58 +21,61 @@ export const colorMask = (() => {
         red: components[0],
         green: components[1],
         blue: components[2],
-        alpha: components[3]
+        alpha: components[3],
     };
 })();
+// not going to export these, because they're tricky to handle:
+// maskToShift[0xff000000] will not work, because 0xff000000 is
+// interpreted as a double, but maskToShift[0xff000000|0] will
+// work
+const maskToShift = {
+    [0xff]: (val) => val,
+    [0xff << 8]: (val) => val << 8,
+    [0xff << 16]: (val) => val << 16,
+    [0xff << 24]: (val) => val << 24,
+};
+const maskToExtract = {
+    [0xff]: (val) => val & 0xff,
+    [0xff << 8]: (val) => (val >>> 8) & 0xff,
+    [0xff << 16]: (val) => (val >>> 16) & 0xff,
+    [0xff << 24]: (val) => (val >>> 24) & 0xff,
+};
 // Hopefully the JIT will inline these functions, I've tried to link
 // them as statically as possible.
+// TODO: make them work in a Worker environment, communicate with the
+// main page (they're going to be initialized asynchronously with root
+// level awaits)
 export const shiftToRed = (() => {
     // Rgba or abgR
-    return colorMask.red === 0xff
-        ? (val) => val
-        : (val) => val << 24;
+    return maskToShift[colorMask.red | 0];
 })();
 export const shiftToGreen = (() => {
     // rGba or abGr
-    return colorMask.green === 0xff00
-        ? (val) => val << 8
-        : (val) => val << 16;
+    return maskToShift[colorMask.green | 0];
 })();
 export const shiftToBlue = (() => {
     // rgBa or aBgr
-    return colorMask.blue === 0xff00
-        ? (val) => val << 8
-        : (val) => val << 16;
+    return maskToShift[colorMask.blue | 0];
 })();
 export const shiftToAlpha = (() => {
     // rgbA or Abgr
-    return colorMask.alpha === 0xff
-        ? (val) => val
-        : (val) => val << 24;
+    return maskToShift[colorMask.alpha | 0];
 })();
 export const extractRed = (() => {
     // Rgba or abgR
-    return colorMask.red === 0xff
-        ? (val) => val & 0xff
-        : (val) => val >>> 24 & 0xff;
+    return maskToExtract[colorMask.red | 0];
 })();
 export const extractGreen = (() => {
     // rGba or abGr
-    return colorMask.green === 0xff00
-        ? (val) => val >>> 8 & 0xff
-        : (val) => val >>> 16 & 0xff;
+    return maskToExtract[colorMask.green | 0];
 })();
 export const extractBlue = (() => {
     // rgBa or aBgr
-    return colorMask.blue === 0xff00
-        ? (val) => val >>> 8 & 0xff
-        : (val) => val >>> 16 & 0xff;
+    return maskToExtract[colorMask.blue | 0];
 })();
 export const extractAlpha = (() => {
     // rgbA or Abgr
-    return colorMask.alpha === 0xff
-        ? (val) => val & 0xff
-        : (val) => val >>> 24 & 0xff;
+    return maskToExtract[colorMask.alpha | 0];
 })();
 export function rgba(r, g, b, a) {
     return shiftToRed(r) | shiftToGreen(g) | shiftToBlue(b) | shiftToAlpha(a);
@@ -82,19 +85,32 @@ export const platformIsLittleEndian = (() => {
     return new DataView(test.buffer).getUint32(0, true) === 0x12345678;
 })();
 export function formatColor(c) {
-    return "#" + [extractRed(c), extractGreen(c), extractBlue(c), extractAlpha(c)]
-        .map(n => n.toString(16).padStart(2, "0"))
-        .join("");
+    return ("#" +
+        [extractRed(c), extractGreen(c), extractBlue(c), extractAlpha(c)]
+            .map(n => n.toString(16).padStart(2, "0"))
+            .join(""));
 }
-export const defaultCanvasFactory = () => document.createElement("canvas");
+export const canvasCapableEnvironment = !!(self.document || self.OffscreenCanvas);
+export const offscreenCanvasFactory = self.OffscreenCanvas
+    ? () => new OffscreenCanvas(300, 150)
+    : () => {
+        throw new Error("Environment has no canvas capability");
+    };
+export const defaultCanvasFactory = self.document
+    ? () => document.createElement("canvas")
+    : offscreenCanvasFactory;
 export class CropParameters {
     constructor(copyFrom) {
         this.color = colorMask.alpha; // opaque black
         this._cropRect = null;
         this._expandedRect = null;
         if (copyFrom) {
-            this._cropRect = copyFrom._cropRect ? Array.from(copyFrom._cropRect) : null;
-            this._expandedRect = copyFrom._expandedRect ? Array.from(copyFrom._expandedRect) : null;
+            this._cropRect = copyFrom._cropRect
+                ? Array.from(copyFrom._cropRect)
+                : null;
+            this._expandedRect = copyFrom._expandedRect
+                ? Array.from(copyFrom._expandedRect)
+                : null;
             this.color = copyFrom.color;
         }
     }
@@ -146,7 +162,7 @@ export class ByteImageBuffer extends ImageBuffer {
         this._pitch = pitch;
     }
     static allocate(width, height) {
-        const bytes = new DataView(new ArrayBuffer(width * height << 2));
+        const bytes = new DataView(new ArrayBuffer((width * height) << 2));
         return new ByteImageBuffer(bytes, width, height, width << 2);
     }
     get bytes() {
@@ -169,7 +185,9 @@ export class ByteImageBuffer extends ImageBuffer {
         canvas.width = this._width;
         canvas.height = this._height;
         const bytes = this._bytes;
-        canvas.getContext("2d").putImageData(new ImageData(util.toUint8ClampedArray(bytes), this._pitch >> 2, this._height), 0, 0);
+        canvas
+            .getContext("2d")
+            .putImageData(new ImageData(util.toUint8ClampedArray(bytes), this._pitch >> 2, this._height), 0, 0);
         const buffer = new CanvasImageBuffer(canvas);
         buffer.cropParameters = this.cropParameters;
         return buffer;
@@ -204,7 +222,8 @@ export class CanvasImageBuffer extends ImageBuffer {
     }
     _toCanvasImageBuffer(canvasFactory) {
         const newCanvas = canvasFactory();
-        if (newCanvas instanceof HTMLCanvasElement === this._canvas instanceof HTMLCanvasElement) {
+        if (newCanvas instanceof HTMLCanvasElement ===
+            this._canvas instanceof HTMLCanvasElement) {
             return this;
         }
         else {

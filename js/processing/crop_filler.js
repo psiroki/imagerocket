@@ -1,8 +1,8 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ByteImageBuffer, CropParameters, } from "./image.js";
-import { ProcessNode, globalSerializer } from "./process_node.js";
+import { SimpleProcessNode, globalSerializer } from "./process_node.js";
 import * as util from "./util.js";
-export class BorderColorFiller extends ProcessNode {
+export class BorderColorFiller extends SimpleProcessNode {
     serialize() {
         return this.ownBridge.exportToModel({ "_super": super.serialize() });
     }

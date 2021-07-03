@@ -11,6 +11,13 @@ export class ProcessNode extends Serializable {
         super(...arguments);
         this._nodeId = ++ProcessNode.idCounter;
     }
+    /// Specify what features the node has to decide wether it can be
+    /// run in a worker or not. The result may change based on the
+    /// node configuration (for example a zero pixel expansion node does
+    /// nothing, it can be a `"noEffect"` node)
+    get features() {
+        return new Set();
+    }
     get modelBridge() {
         var _a;
         return ((_a = this.ownBridge) === null || _a === void 0 ? void 0 : _a.pair) || null;
@@ -29,6 +36,15 @@ export class ProcessNode extends Serializable {
     }
 }
 ProcessNode.idCounter = Date.now();
+export class SimpleProcessNode extends ProcessNode {
+    /// Most nodes operate on one image at a time, but some nodes
+    /// (like collage nodes) would combine or split images. Those
+    /// classes need to override this function and ignore processImage
+    /// altogether.
+    processImages(buffers) {
+        return Promise.all(buffers.map(buffer => this.processImage(buffer)));
+    }
+}
 class SerializationSession {
     constructor(service) {
         this.ids = new Map();
@@ -170,12 +186,12 @@ export class ImageProcessingPipeline extends ProcessNode {
         super();
         this.ownBridge.model["pipeline"] = nodes;
     }
-    async processImage(buffer) {
+    async processImages(buffers) {
         const nodes = this.ownBridge.model["pipeline"];
-        for (let node of this.nodes) {
-            buffer = await node.processImage(buffer);
+        for (let node of nodes) {
+            buffers = await node.processImages(buffers);
         }
-        return buffer;
+        return buffers;
     }
     serialize() {
         return this.ownBridge.exportToModel({ "_super": super.serialize() });

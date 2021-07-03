@@ -1,10 +1,10 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { ProcessNode, globalSerializer } from "./process_node.js";
+import { SimpleProcessNode, globalSerializer } from "./process_node.js";
 import { clamp, isNullish, Optional, toUint32Array } from "./util.js";
 /**
  * A sampler extracts a color from the image
  */
-export class BorderColorSampler extends ProcessNode {
+export class BorderColorSampler extends SimpleProcessNode {
     async processImage(buffer) {
         const colorOrOptional = await this.extractColor(buffer);
         let color;
