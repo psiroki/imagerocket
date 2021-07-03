@@ -450,15 +450,11 @@ export class PropertySheet {
       grabbedId: number,
       afterNeighbor: boolean
     ) => {
-      console.log("moveAfter", neighborId, grabbedId, afterNeighbor);
       const list = Array.from(this.bridge.model[name] as ProcessNode[]);
-      console.log(list.map(e => e.nodeId));
       const index = list.findIndex(e => e.nodeId === grabbedId);
       const removed = list.splice(index, 1);
-      console.log(list.map(e => e.nodeId));
       const beforeIndex = list.findIndex(e => e.nodeId === neighborId);
       list.splice(beforeIndex + (afterNeighbor ? 1 : 0), 0, ...removed);
-      console.log(list.map(e => e.nodeId));
       this.bridge.model[name] = list;
       updateControls(this.bridge.model, name);
     };
