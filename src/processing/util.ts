@@ -62,8 +62,8 @@ export function toHtmlCanvas(
   }
 }
 
-export function replaceUndefined(val: any, replacement: any): any {
-  return typeof val === "undefined" ? replacement : val;
+export function replaceNullish(val: any, replacement: any): any {
+  return isNullish(val) ? replacement : val;
 }
 
 export function isNullish(val: any): boolean {

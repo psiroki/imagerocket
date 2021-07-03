@@ -1,4 +1,4 @@
-import { replaceUndefined } from "../processing/util.js";
+import { replaceNullish } from "../processing/util.js";
 
 export interface UpdateObserver {
   addHandler(prop: string, handler: UpdateHandler): void;
@@ -59,7 +59,7 @@ export class ModelBridge implements UpdateObserver {
     const properties = this.schema["properties"];
     if (properties instanceof Array) {
       return properties
-        .filter((e) => replaceUndefined(e["serializable"], true))
+        .filter((e) => replaceNullish(e["serializable"], true))
         .map((e) => e["name"]);
     } else {
       return [];

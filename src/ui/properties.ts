@@ -5,11 +5,11 @@ import {
   rgba,
   shiftToAlpha,
 } from "../processing/image.js";
-import { globalSerializer, ProcessNode } from "../processing/process_node.js";
+import { globalSerializer, ProcessNode, SerializableConstructor } from "../processing/process_node.js";
 import {
   AsyncStream,
   isNullish,
-  replaceUndefined,
+  replaceNullish,
 } from "../processing/util.js";
 import { ModelBridge } from "./model_bridge.js";
 import { ProcessNodeEditor } from "./node_editor.js";
@@ -319,7 +319,7 @@ export class PropertySheet {
 
     const updateControls = (target: any, prop: string): void => {
       const val = target[prop] as number;
-      numberInput.value = replaceUndefined(val, "").toString();
+      numberInput.value = replaceNullish(val, "").toString();
     };
 
     this.bridge.addHandler(name, updateControls);
@@ -389,23 +389,6 @@ export class PropertySheet {
 
     const editors: Map<number, ProcessNodeEditor> = new Map();
 
-    const addPanel = document.createElement("div");
-    addPanel.classList.add("addPanel");
-    const prototypes: Map<string, ProcessNode> = new Map();
-    for (let entry of globalSerializer.enumerateClasses()) {
-      let obj = new entry.create();
-      if (obj instanceof ProcessNode) {
-        prototypes.set(entry.name, obj);
-      }
-    }
-    for (let className of Array.from(prototypes.keys()).sort()) {
-      let addButton = document.createElement("button");
-      addButton.textContent = className;
-      prototypes.get(className)!.classColorInfo.setupAsBackgroundColor(addButton);
-      addPanel.appendChild(addButton);
-    }
-    container.appendChild(addPanel);
-
     const updateControls = (target: any, prop: string): void => {
       const val = target[prop] || [];
       const nodes: ProcessNode[] = val.map((e: any) => e as ProcessNode);
@@ -454,6 +437,29 @@ export class PropertySheet {
 
     this.bridge.addHandler(name, updateControls);
     updateControls(this.model, name);
+
+    const addPanel = document.createElement("div");
+    addPanel.classList.add("addPanel");
+    const prototypes: Map<string, SerializableConstructor> = new Map();
+    for (let entry of globalSerializer.enumerateClasses()) {
+      let obj = new entry.create();
+      if (obj instanceof ProcessNode) {
+        prototypes.set(entry.name, entry.create);
+      }
+    }
+    for (let className of Array.from(prototypes.keys()).sort()) {
+      let addButton = document.createElement("button");
+      addButton.textContent = className;
+      const create = prototypes.get(className)!;
+      (new create() as ProcessNode).classColorInfo.setupAsBackgroundColor(addButton);
+      addButton.addEventListener("click", _ => {
+        const instance = new create() as ProcessNode;
+        this.model[name] = (this.model[name] || []).concat([instance]);
+        updateControls(this.model, name);
+      });
+      addPanel.appendChild(addButton);
+    }
+    container.appendChild(addPanel);
 
     return container;
   }
