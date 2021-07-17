@@ -232,10 +232,19 @@ class CssColorWithLuminosityImpl {
   readonly luminosity: number;
 }
 
-export function createButton(caption: string, clickHandler: {(event: MouseEvent):void}) {
+export function createButton(
+  caption: string,
+  clickHandler: { (event: MouseEvent): void },
+  { classes }: { classes?: string[] | string } = {}
+) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = caption;
   button.addEventListener("click", e => clickHandler.call(this, e));
+  if (classes instanceof Array) {
+    button.classList.add(...classes);
+  } else if (typeof classes === "string") {
+    button.classList.add(classes);
+  }
   return button;
 }

@@ -7,7 +7,7 @@ const templateLookup: any = Object.fromEntries(
     }));
 
 
-export function cloneTemplate(name: string): Element | null {
+export function cloneTemplate(name: string): HTMLElement | null {
   const template = templateLookup[name];
   return template ? template.cloneNode(true) : null;
 }

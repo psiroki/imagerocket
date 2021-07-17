@@ -1,7 +1,7 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer } from "./image.js";
 import { SimpleProcessNode, globalSerializer, NodeFeature } from "./process_node.js";
-import { isNullish, replaceNullish } from "./util.js";
+import { replaceNullish } from "./util.js";
 
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
 

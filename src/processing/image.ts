@@ -55,36 +55,36 @@ const maskToExtract = {
 // level awaits)
 export const shiftToRed = (() => {
   // Rgba or abgR
-  return maskToShift[colorMask.red|0];
+  return maskToShift[colorMask.red | 0];
 })();
 export const shiftToGreen = (() => {
   // rGba or abGr
-  return maskToShift[colorMask.green|0];
+  return maskToShift[colorMask.green | 0];
 })();
 export const shiftToBlue = (() => {
   // rgBa or aBgr
-  return maskToShift[colorMask.blue|0];
+  return maskToShift[colorMask.blue | 0];
 })();
 export const shiftToAlpha = (() => {
   // rgbA or Abgr
-  return maskToShift[colorMask.alpha|0];
+  return maskToShift[colorMask.alpha | 0];
 })();
 
 export const extractRed = (() => {
   // Rgba or abgR
-  return maskToExtract[colorMask.red|0];
+  return maskToExtract[colorMask.red | 0];
 })();
 export const extractGreen = (() => {
   // rGba or abGr
-  return maskToExtract[colorMask.green|0];
+  return maskToExtract[colorMask.green | 0];
 })();
 export const extractBlue = (() => {
   // rgBa or aBgr
-  return maskToExtract[colorMask.blue|0];
+  return maskToExtract[colorMask.blue | 0];
 })();
 export const extractAlpha = (() => {
   // rgbA or Abgr
-  return maskToExtract[colorMask.alpha|0];
+  return maskToExtract[colorMask.alpha | 0];
 })();
 
 export function rgba(r: number, g: number, b: number, a: number): number {
@@ -109,7 +109,9 @@ export interface CanvasFactory {
   (): HTMLCanvasElement | OffscreenCanvas;
 }
 
-export const canvasCapableEnvironment = !!(self.document || self.OffscreenCanvas);
+export const canvasCapableEnvironment = !!(
+  self.document || self.OffscreenCanvas
+);
 
 export const offscreenCanvasFactory: CanvasFactory = self.OffscreenCanvas
   ? () => new OffscreenCanvas(300, 150)
@@ -177,6 +179,19 @@ export abstract class ImageBuffer {
     return this.pitch >> 2;
   }
   abstract get pitch(): number;
+
+  drawOnCanvas(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    resizeCanvas: boolean = true
+  ): void {
+    this._drawOnCanvas(canvas, resizeCanvas);
+  }
+
+  protected abstract _drawOnCanvas(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    resizeCanvas: boolean
+  ): void;
+
   abstract toByteImageBuffer(): ByteImageBuffer;
   toCanvasImageBuffer(
     canvasFactory: CanvasFactory = defaultCanvasFactory
@@ -231,14 +246,14 @@ export class ByteImageBuffer extends ImageBuffer {
     return this._pitch;
   }
 
-  toByteImageBuffer(): ByteImageBuffer {
-    return this;
-  }
-
-  _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer {
-    const canvas = canvasFactory();
-    canvas.width = this._width;
-    canvas.height = this._height;
+  protected _drawOnCanvas(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    resizeCanvas: boolean
+  ): void {
+    if (resizeCanvas) {
+      canvas.width = this._width;
+      canvas.height = this._height;
+    }
     const bytes = this._bytes;
     canvas
       .getContext("2d")!
@@ -251,6 +266,15 @@ export class ByteImageBuffer extends ImageBuffer {
         0,
         0
       );
+  }
+
+  toByteImageBuffer(): ByteImageBuffer {
+    return this;
+  }
+
+  _toCanvasImageBuffer(canvasFactory: CanvasFactory): CanvasImageBuffer {
+    const canvas = canvasFactory();
+    this._drawOnCanvas(canvas, true);
     const buffer = new CanvasImageBuffer(canvas);
     buffer.cropParameters = this.cropParameters;
     return buffer;
@@ -289,6 +313,17 @@ export class CanvasImageBuffer extends ImageBuffer {
     return this.width * 4;
   }
 
+  protected _drawOnCanvas(
+    newCanvas: HTMLCanvasElement | OffscreenCanvas,
+    resizeCanvas: boolean
+  ): void {
+    if (resizeCanvas) {
+      newCanvas.width = this._canvas.width;
+      newCanvas.height = this._canvas.height;
+    }
+    newCanvas.getContext("2d")!.drawImage(this._canvas, 0, 0);
+  }
+
   toByteImageBuffer(): ByteImageBuffer {
     const buffer = new ByteImageBuffer(
       this.bytes,
@@ -308,9 +343,7 @@ export class CanvasImageBuffer extends ImageBuffer {
     ) {
       return this;
     } else {
-      newCanvas.width = this._canvas.width;
-      newCanvas.height = this._canvas.height;
-      newCanvas.getContext("2d")!.drawImage(this._canvas, 0, 0);
+      this._drawOnCanvas(newCanvas, true);
       const buffer = new CanvasImageBuffer(newCanvas);
       buffer.cropParameters = this.cropParameters;
       return buffer;

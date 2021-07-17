@@ -3,6 +3,7 @@ import { CanvasImageBuffer, ImageBuffer } from "./processing/image.js";
 import {
   ImageProcessingPipeline,
   globalSerializer,
+  ProcessNode,
 } from "./processing/process_node.js";
 import { ManualColor, PointSampler } from "./processing/samplers.js";
 
@@ -10,8 +11,6 @@ import * as drop from "./ui/drop.js";
 import * as util from "./processing/util.js";
 import { SimpleExpander } from "./processing/expanders.js";
 import { BorderColorFiller } from "./processing/crop_filler.js";
-import { PropertySheet } from "./ui/properties.js";
-import { cloneTemplate } from "./ui/templates.js";
 import { ProcessNodeEditor } from "./ui/node_editor.js";
 
 const pasteTargets = new Set(["text", "number"]);
@@ -19,29 +18,59 @@ const pasteTargets = new Set(["text", "number"]);
 class ImageRocketApp {
   constructor(root: Element) {
     this.root = root;
-    let sampler = new PointSampler();
-    let detector = new SimpleCropDetector();
-    let expander = new SimpleExpander();
-    expander.expandBy = 4;
-    let manual = new ManualColor();
-    let filler = new BorderColorFiller();
-    let elements = [sampler, detector, expander, manual, filler];
-    let pipeline = new ImageProcessingPipeline(elements);
-    document.body.appendChild(new ProcessNodeEditor(pipeline).editorElement);
+    const def = (() => {
+      try {
+        return JSON.parse(localStorage.getItem("imagerocket")!);
+      } catch (e) {
+        return null;
+      }
+    })();
+    let pipeline: ProcessNode | null = null;
+    if (def?.pipeline instanceof Array) {
+      try {
+        const result = globalSerializer.deserializeAll(def.pipeline);
+        pipeline = result[0] as ProcessNode;
+      } catch (e) {
+        console.error(e);
+        pipeline = null;
+      }
+    }
+    if (!pipeline) {
+      let sampler = new PointSampler();
+      let detector = new SimpleCropDetector();
+      let expander = new SimpleExpander();
+      expander.expandBy = 4;
+      let manual = new ManualColor();
+      let filler = new BorderColorFiller();
+      let elements = [sampler, detector, expander, manual, filler];
+      pipeline = new ImageProcessingPipeline(elements);
+    }
+
+    document
+      .querySelector(".pipelines")!
+      .appendChild(new ProcessNodeEditor(pipeline).editorElement);
     this.pipeline = pipeline;
   }
 
   run() {
+    window.addEventListener("beforeunload", _ => {
+      localStorage.setItem(
+        "imagerocket",
+        JSON.stringify({
+          pipeline: globalSerializer.serializeAll([this.pipeline]),
+        })
+      );
+    });
     const dropBox = this.root.querySelector(".dropBox")!;
     const fileInput = dropBox.querySelector(
       "input[type=file]"
     ) as HTMLInputElement;
     if (fileInput) {
-      dropBox.addEventListener("dblclick", (_) => {
+      dropBox.addEventListener("dblclick", _ => {
         fileInput.click();
       });
-      fileInput.addEventListener("change", (e) => {
-        Array.from((e.currentTarget as any).files).forEach((blob) =>
+      fileInput.addEventListener("change", e => {
+        Array.from((e.currentTarget as any).files).forEach(blob =>
           this.processBlob(blob as Blob)
         );
       });
@@ -79,7 +108,7 @@ class ImageRocketApp {
           }
         }
         if (stringItem) {
-          stringItem.getAsString((string) =>
+          stringItem.getAsString(string =>
             console.log("Only string found:", string)
           );
         }
@@ -109,14 +138,14 @@ class ImageRocketApp {
     buffer = resultBuffers[0];
     canvas = util.toHtmlCanvas(buffer.toCanvasImageBuffer().canvas);
     let div = document.createElement("div");
-    div.addEventListener("click", (_) => div.remove());
+    div.addEventListener("click", _ => div.remove());
     div.className = "result";
     div.appendChild(canvas);
     document.body.appendChild(div);
   }
 
   readonly root: Element;
-  private pipeline: ImageProcessingPipeline;
+  private pipeline: ProcessNode;
 }
 
 export let app = new ImageRocketApp(document.body);

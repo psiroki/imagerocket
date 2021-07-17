@@ -15,9 +15,11 @@ export class ProcessNodeEditor {
         .appendChild(new PropertySheet(bridge).element);
     }
     const titleElement = this.editorElement.querySelector(".title") as HTMLElement;
-    titleElement.textContent = title;
+    const caption = titleElement.querySelector(".caption")!;
+    caption.textContent = title;
     colorHashString(title, 0.5).setupAsBackgroundColor(titleElement);
     this.titleElement = titleElement;
+    this.captionElement = caption;
   }
 
   set itemControls(newControls: Element) {
@@ -31,5 +33,6 @@ export class ProcessNodeEditor {
   readonly node: ProcessNode;
   readonly editorElement: Element;
   readonly titleElement: Element;
+  readonly captionElement: Element;
   private _itemControls: Element | undefined | null;
 }

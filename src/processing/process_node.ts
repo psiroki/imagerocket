@@ -6,14 +6,14 @@ import { colorHashString, CssColorWithLuminosity, deepCopyJson } from "./util.js
 /// features it requires.
 /// * `canvas`: if the browser supports `OffScreenCanvas` it may
 ///   be transferred to a worker
-/// * `userInteraction`: must not be executed in a worker thread
+/// * `interactive`: must not be executed in a worker thread
 ///   because DOM access is required
 /// * `passThrough`: the process will not modify the image at all
 ///   (processImage is always called though, but the result will
 ///   be ignored, useful for display nodes)
 /// * `noEffect`: the node is configured to perform no effect at
 ///   all, it can be skipped over
-export type NodeFeature = "canvas" | "userInteraction" | "passThrough" | "noEffect";
+export type NodeFeature = "canvas" | "interactive" | "passThrough" | "noEffect";
 
 export abstract class Serializable {
   /**
@@ -77,9 +77,17 @@ export abstract class ProcessNode extends Serializable {
     return this._nodeId;
   }
 
+  serializedClone(): ProcessNode {
+    const result = super.serializedClone() as ProcessNode;
+    result._nodeId = ++ProcessNode.idCounter;
+    return result;
+  }
+
+  readonly instanceId: number = ++ProcessNode.idCounter;
+
   private _nodeId: number = ++ProcessNode.idCounter;
 
-  private static idCounter: number = 0;//Date.now();
+  private static idCounter: number = Date.now() - 1625597180147;
 }
 
 export abstract class SimpleProcessNode extends ProcessNode {
@@ -118,6 +126,7 @@ class SerializationSession {
     if (!id) {
       let className = this.service.classNameFromInstance(node);
       let index = (this.counter.get(className) ?? 0) + 1;
+      this.counter.set(className, index);
       id = className + index;
       this.ids.set(node, id);
       let serialized: object = this.findReferences(node, node.serialize());
@@ -131,7 +140,7 @@ class SerializationSession {
 
   private findReferences(node: Serializable, value: any): any {
     if (value instanceof Serializable) {
-      return { "_class": "_ref", "id": this.addNodeInternal(value, false) };
+      return { "_class": "_ref", "_id": this.addNodeInternal(value, false) };
     } else if (value instanceof Array) {
       return value.map(e => this.findReferences(node, e));
     } else if (typeof value === "object" && value) {
@@ -288,6 +297,10 @@ export class ImageProcessingPipeline extends ProcessNode {
   deserialize(obj: object) {
     super.deserialize(obj["_super"]);
     this.ownBridge.patchModel(obj);
+  }
+
+  get nodes(): ProcessNode[] {
+    return this.ownBridge.model["pipeline"];
   }
 
   get ownBridge(): ModelBridge {
