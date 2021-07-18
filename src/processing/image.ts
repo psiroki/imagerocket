@@ -1,4 +1,4 @@
-import * as util from "./util.js";
+import * as util from "../common/util.js";
 
 /**
  * A 32 bit color value with alpha. Always in playform endianness

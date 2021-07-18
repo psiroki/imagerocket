@@ -8,10 +8,11 @@ import {
 import { ManualColor, PointSampler } from "./processing/samplers.js";
 
 import * as drop from "./ui/drop.js";
-import * as util from "./processing/util.js";
+import * as util from "./common/util.js";
 import { SimpleExpander } from "./processing/expanders.js";
 import { BorderColorFiller } from "./processing/crop_filler.js";
 import { ProcessNodeEditor } from "./ui/node_editor.js";
+import { ImageViewer } from "./processing/viewer.js";
 
 const pasteTargets = new Set(["text", "number"]);
 
@@ -42,7 +43,8 @@ class ImageRocketApp {
       expander.expandBy = 4;
       let manual = new ManualColor();
       let filler = new BorderColorFiller();
-      let elements = [sampler, detector, expander, manual, filler];
+      let viewer = new ImageViewer();
+      let elements = [sampler, detector, expander, manual, filler, viewer];
       pipeline = new ImageProcessingPipeline(elements);
     }
 
@@ -134,14 +136,11 @@ class ImageRocketApp {
     let buffer: ImageBuffer = new CanvasImageBuffer(canvas);
     const pipeline = this.pipeline;
     console.log(globalSerializer.serializeAll([pipeline]));
-    let resultBuffers: ImageBuffer[] = await pipeline.processImages([buffer]);
-    buffer = resultBuffers[0];
-    canvas = util.toHtmlCanvas(buffer.toCanvasImageBuffer().canvas);
-    let div = document.createElement("div");
-    div.addEventListener("click", _ => div.remove());
-    div.className = "result";
-    div.appendChild(canvas);
-    document.body.appendChild(div);
+    await pipeline.processImages([buffer]);
+    const viewer = document.querySelector(".imageViewers > :last-child");
+    if (viewer && !util.overlapsView(viewer as HTMLElement)) {
+      viewer.scrollIntoView();
+    }
   }
 
   readonly root: Element;

@@ -15,7 +15,7 @@ import {
   createButton,
   isNullish,
   replaceNullish,
-} from "../processing/util.js";
+} from "../common/util.js";
 import { ModelBridge } from "./model_bridge.js";
 import { ProcessNodeEditor } from "./node_editor.js";
 import { cloneTemplate } from "./templates.js";

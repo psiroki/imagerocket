@@ -1,4 +1,4 @@
-import { replaceNullish } from "../processing/util.js";
+import { replaceNullish } from "../common/util.js";
 
 export interface UpdateObserver {
   addHandler(prop: string, handler: UpdateHandler): void;

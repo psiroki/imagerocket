@@ -1,7 +1,7 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { ImageBuffer, Color } from "./image.js";
 import { SimpleProcessNode, globalSerializer, NodeFeature } from "./process_node.js";
-import { clamp, isNullish, Optional, toUint32Array } from "./util.js";
+import { clamp, isNullish, Optional, toUint32Array } from "../common/util.js";
 
 /**
  * A sampler extracts a color from the image

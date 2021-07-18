@@ -1,3 +1,4 @@
+import { ImageView } from "../ui/image_viewer.js";
 import { ImageBuffer } from "./image.js";
 import { SimpleProcessNode, globalSerializer, NodeFeature } from "./process_node.js";
 
@@ -19,7 +20,9 @@ export class ImageViewer extends SimpleProcessNode {
       const canvas = document.createElement("canvas");
       buffer.drawOnCanvas(canvas);
       resolve(buffer);
-      document.querySelector(".imageViewers")!.appendChild(canvas);
+      const view = new ImageView(canvas);
+      document.querySelector(".imageViewers")!.appendChild(view.view);
+      view.centerImage();
     });
   }
 }

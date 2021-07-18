@@ -248,3 +248,25 @@ export function createButton(
   }
   return button;
 }
+
+export function loadBlob(blob: Blob): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = _ => {
+      resolve(fr.result as ArrayBuffer);
+    };
+    fr.onerror = e => {
+      reject(e);
+    };
+    fr.readAsArrayBuffer(blob);
+  });
+}
+
+export function overlapsView(e: HTMLElement): boolean {
+  const r = e.getBoundingClientRect();
+  if (r.bottom < 0) return false;
+  if (r.right < 0) return false;
+  if (r.top > window.innerHeight) return false;
+  if (r.left > window.innerWidth) return false;
+  return true;
+}

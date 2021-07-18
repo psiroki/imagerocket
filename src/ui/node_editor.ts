@@ -1,5 +1,5 @@
 import { globalSerializer, ProcessNode } from "../processing/process_node.js";
-import { colorHashString } from "../processing/util.js";
+import { colorHashString } from "../common/util.js";
 import { PropertySheet } from "./properties.js";
 import { cloneTemplate } from "./templates.js";
 

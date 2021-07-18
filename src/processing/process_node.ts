@@ -1,6 +1,6 @@
 import { ImageBuffer } from "./image.js";
 import { ModelBridge } from "../ui/model_bridge.js";
-import { colorHashString, CssColorWithLuminosity, deepCopyJson } from "./util.js";
+import { colorHashString, CssColorWithLuminosity, deepCopyJson } from "../common/util.js";
 
 /// The node may be transferred to a worker thread based on the
 /// features it requires.
@@ -234,6 +234,7 @@ export class SerializableClass {
 export class Serializer {
   addClass(classFunction: SerializableConstructor, name: string = "") {
     if (name === "") name = classFunction["className"] ?? classFunction.name;
+    console.log(`Class: ${classFunction.name} as ${name}`);
     this.classByName.set(name, classFunction);
     this.nameByClass.set(classFunction, name);
   }
