@@ -1,5 +1,5 @@
 import { ModelBridge } from "../ui/model_bridge.js";
-import { colorHashString, deepCopyJson } from "./util.js";
+import { colorHashString, deepCopyJson } from "../common/util.js";
 export class Serializable {
     serializedClone() {
         const arr = globalSerializer.deserializeAll(deepCopyJson(globalSerializer.serializeAll([this])));
@@ -9,6 +9,7 @@ export class Serializable {
 export class ProcessNode extends Serializable {
     constructor() {
         super(...arguments);
+        this.instanceId = ++ProcessNode.idCounter;
         this._nodeId = ++ProcessNode.idCounter;
     }
     get classColorInfo() {
@@ -38,8 +39,13 @@ export class ProcessNode extends Serializable {
     get nodeId() {
         return this._nodeId;
     }
+    serializedClone() {
+        const result = super.serializedClone();
+        result._nodeId = ++ProcessNode.idCounter;
+        return result;
+    }
 }
-ProcessNode.idCounter = 0; //Date.now();
+ProcessNode.idCounter = Date.now() - 1625597180147;
 export class SimpleProcessNode extends ProcessNode {
     /// Most nodes operate on one image at a time, but some nodes
     /// (like collage nodes) would combine or split images. Those
@@ -69,6 +75,7 @@ class SerializationSession {
         if (!id) {
             let className = this.service.classNameFromInstance(node);
             let index = ((_a = this.counter.get(className)) !== null && _a !== void 0 ? _a : 0) + 1;
+            this.counter.set(className, index);
             id = className + index;
             this.ids.set(node, id);
             let serialized = this.findReferences(node, node.serialize());
@@ -82,7 +89,7 @@ class SerializationSession {
     }
     findReferences(node, value) {
         if (value instanceof Serializable) {
-            return { "_class": "_ref", "id": this.addNodeInternal(value, false) };
+            return { "_class": "_ref", "_id": this.addNodeInternal(value, false) };
         }
         else if (value instanceof Array) {
             return value.map(e => this.findReferences(node, e));
@@ -167,6 +174,7 @@ export class Serializer {
         var _a;
         if (name === "")
             name = (_a = classFunction["className"]) !== null && _a !== void 0 ? _a : classFunction.name;
+        console.log(`Class: ${classFunction.name} as ${name}`);
         this.classByName.set(name, classFunction);
         this.nameByClass.set(classFunction, name);
     }
@@ -214,6 +222,9 @@ export class ImageProcessingPipeline extends ProcessNode {
     deserialize(obj) {
         super.deserialize(obj["_super"]);
         this.ownBridge.patchModel(obj);
+    }
+    get nodes() {
+        return this.ownBridge.model["pipeline"];
     }
     get ownBridge() {
         if (!this.bridge) {

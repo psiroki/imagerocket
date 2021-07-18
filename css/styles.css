@@ -1,6 +1,6 @@
 body {
   font-family: sans-serif;
-  font-size: 12pt;
+  font-size: 11.5pt;
   margin: 8px;
   background-color: #444;
   color: white;
@@ -85,6 +85,15 @@ body {
   border-radius: 3px 3px 0 0;  
   position: relative;
   touch-action: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.processNode > .title > .caption {
+  display: inline-block;
+  flex: 1 1 0;
+  text-align: center;
 }
 
 .processNode > .contents {
@@ -192,15 +201,12 @@ body {
 }
 
 .itemControls {
-  position: absolute;
-  right: 4px;
-  top: 0;
-  bottom: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
 }
 
 .itemControls > button {
+  position: relative;
   background: none;
   opacity: 0.5;
   color: inherit;
@@ -213,9 +219,131 @@ body {
   width: 26px;
   height: 20px;
   transition: transform 0.1s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .itemControls > button:active {
   opacity: 1;
   transform: scale(1.15);
+}
+
+.itemControls > button.down::before {
+  content: "";
+  display: inline-block;
+  border: 5px solid;
+  border-top-width: 10px;
+  border-left-color: transparent;
+  border-right-color: transparent;
+  border-bottom-width: 0;
+  width: 0;
+  height: 0;
+}
+
+.itemControls > button.up::before {
+  content: "";
+  display: inline-block;
+  border: 5px solid;
+  border-bottom-width: 10px;
+  border-left-color: transparent;
+  border-right-color: transparent;
+  border-top-width: 0;
+  width: 0;
+  height: 0;
+  transform: translate(0, -1px);
+}
+
+.itemControls > button.delete::before,
+.itemControls > button.delete::after {
+  content: "";
+  position: absolute;
+  background-color: currentColor;
+  width: 2px;
+  height: 10px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-1px, -5px) rotate(45deg);
+}
+
+.itemControls > button.delete::before {
+  transform: translate(-1px, -5px) rotate(-45deg);
+}
+
+.itemControls > button.replace::before,
+.itemControls > button.replace::after {
+  content: "";
+  position: absolute;
+  background-color: currentColor;
+  width: 2px;
+  height: 10px;
+  top: 50%;
+  left: 50%;
+  transform-origin: 50% 100%;
+  transform: translate(-1px, -7px) rotate(45deg) translate(0, 0.5px);
+}
+
+.itemControls > button.replace::after {
+  transform: translate(-1px, -7px) rotate(-45deg) translate(0, 0.5px);
+}
+
+.itemControls > button.duplicate::before,
+.itemControls > button.duplicate::after {
+  content: "";
+  position: absolute;
+  border: 2px solid currentColor;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+  border-radius: 2px;
+  width: 5px;
+  height: 5px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-3px, -6px);
+  font-size: 5px;
+  line-height: 5px;
+  text-align: center;
+}
+
+.itemControls > button.duplicate::after {
+  border: 2px solid currentColor;
+  content: "\23fa";
+  transform: translate(-6px, -3px);
+}
+
+.imageView {
+  border: 2px solid #333;
+  border-radius: 5px;
+  box-shadow: 0 0 0 3px #fff1;
+  display: inline-flex;
+  flex-direction: column;
+  margin: 2px;
+  min-width: 300px;
+}
+
+.imageView > .title {
+  text-align: center;
+  padding: 4px;
+}
+
+.imageView > .contents {
+  overflow: hidden;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+}
+
+.imageView > .contents > * {
+  transform-origin: 0 0;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  touch-action: none;
+}
+
+.pipelines {
+  float: left;
+}
+
+.imageViewers > * {
+  vertical-align: top;
 }

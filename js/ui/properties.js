@@ -1,6 +1,6 @@
 import { extractAlpha, formatColor, rgba, shiftToAlpha, } from "../processing/image.js";
 import { globalSerializer, ProcessNode, } from "../processing/process_node.js";
-import { AsyncStream, createButton, isNullish, replaceNullish, } from "../processing/util.js";
+import { AsyncStream, createButton, isNullish, replaceNullish, } from "../common/util.js";
 import { ProcessNodeEditor } from "./node_editor.js";
 import { cloneTemplate } from "./templates.js";
 const optionalPattern = /\?$/;
@@ -310,57 +310,89 @@ export class PropertySheet {
         container.classList.add("processNodeArray");
         const name = item["name"];
         const editors = new Map();
-        const createItemControls = (nodeId) => {
+        let replacing = null;
+        const cancelReplacing = () => {
+            replacing = null;
+            container.appendChild(addPanel);
+        };
+        const createItemControls = (instanceId) => {
             let controls = document.createElement("span");
             controls.classList.add("itemControls");
-            controls.appendChild(createButton("\u25b2", _ => {
+            controls.appendChild(createButton("", _ => {
                 // move up
+                cancelReplacing();
                 const prevList = this.bridge.model[name];
-                const index = prevList.findIndex(e => e.nodeId === nodeId);
+                const index = prevList.findIndex(e => e.instanceId === instanceId);
                 if (index > 0) {
                     this.bridge.model[name] = prevList
                         .slice(0, index - 1)
                         .concat([prevList[index], prevList[index - 1]], prevList.slice(index + 1));
                     updateControls(this.bridge.model, name);
                 }
-            }));
-            controls.appendChild(createButton("\u25bc", _ => {
+            }, { classes: ["up"] }));
+            controls.appendChild(createButton("", _ => {
                 // move down
+                cancelReplacing();
                 const prevList = this.bridge.model[name];
-                const index = prevList.findIndex(e => e.nodeId === nodeId);
+                const index = prevList.findIndex(e => e.instanceId === instanceId);
                 if (index >= 0 && index < prevList.length - 1) {
                     this.bridge.model[name] = prevList
                         .slice(0, index)
                         .concat([prevList[index + 1], prevList[index]], prevList.slice(index + 2));
                     updateControls(this.bridge.model, name);
                 }
-            }));
-            controls.appendChild(createButton("\u2716", _ => {
-                // delete
+            }, { classes: ["down"] }));
+            controls.appendChild(createButton("", _ => {
+                // duplicate
                 const prevList = this.bridge.model[name];
-                const index = prevList.findIndex(e => e.nodeId === nodeId);
+                const index = prevList.findIndex(e => e.instanceId === instanceId);
+                if (index >= 0) {
+                    const clone = prevList[index].serializedClone();
+                    this.bridge.model[name] = prevList
+                        .slice(0, index + 1)
+                        .concat([clone], prevList.slice(index + 1));
+                    updateControls(this.bridge.model, name);
+                }
+            }, { classes: ["duplicate"] }));
+            controls.appendChild(createButton("", _ => {
+                // replace
+                if (replacing === instanceId) {
+                    cancelReplacing();
+                }
+                else {
+                    replacing = instanceId;
+                    container.insertBefore(addPanel, editors.get(instanceId).editorElement.nextSibling);
+                }
+            }, { classes: ["replace"] }));
+            controls.appendChild(createButton("", _ => {
+                // delete
+                cancelReplacing();
+                const prevList = this.bridge.model[name];
+                const index = prevList.findIndex(e => e.instanceId === instanceId);
                 if (index >= 0) {
                     this.bridge.model[name] = prevList
                         .slice(0, index)
                         .concat(prevList.slice(index + 1));
                     updateControls(this.bridge.model, name);
                 }
-            }));
+            }, { classes: ["delete"] }));
             return controls;
         };
         const moveAround = (neighborId, grabbedId, afterNeighbor) => {
+            console.log(moveAround, neighborId, grabbedId, afterNeighbor);
             const list = Array.from(this.bridge.model[name]);
-            const index = list.findIndex(e => e.nodeId === grabbedId);
+            const index = list.findIndex(e => e.instanceId === grabbedId);
             const removed = list.splice(index, 1);
-            const beforeIndex = list.findIndex(e => e.nodeId === neighborId);
+            const beforeIndex = list.findIndex(e => e.instanceId === neighborId);
             list.splice(beforeIndex + (afterNeighbor ? 1 : 0), 0, ...removed);
+            console.log(beforeIndex, index);
             this.bridge.model[name] = list;
             updateControls(this.bridge.model, name);
         };
         const updateControls = (target, prop) => {
             const val = target[prop] || [];
-            const nodes = val.map((e) => e);
-            const nodeById = new Map(nodes.map(p => [p.nodeId, p]));
+            const nodes = val;
+            const nodeById = new Map(nodes.map(p => [p.instanceId, p]));
             const ids = new Set(nodeById.keys());
             // remove deleted editors
             for (let editorId of Array.from(editors.keys())) {
@@ -374,11 +406,11 @@ export class PropertySheet {
             }
             let lastEditor;
             for (let node of nodes) {
-                let editor = editors.get(node.nodeId);
+                let editor = editors.get(node.instanceId);
                 if (!editor) {
                     editor = new ProcessNodeEditor(node);
-                    editor.itemControls = createItemControls(node.nodeId);
-                    editors.set(node.nodeId, editor);
+                    editor.itemControls = createItemControls(node.instanceId);
+                    editors.set(node.instanceId, editor);
                     if (lastEditor) {
                         container.insertBefore(editor.editorElement, lastEditor.editorElement.nextSibling);
                     }
@@ -386,7 +418,7 @@ export class PropertySheet {
                         container.insertBefore(editor.editorElement, container.firstChild);
                     }
                     let movingSession = null;
-                    editor.titleElement.addEventListener("pointerdown", ev => {
+                    editor.captionElement.addEventListener("pointerdown", ev => {
                         if (ev.target !== ev.currentTarget)
                             return;
                         ev.preventDefault();
@@ -399,7 +431,7 @@ export class PropertySheet {
                         };
                         editor.editorElement.classList.add("moving");
                     });
-                    editor.titleElement.addEventListener("pointerup", ev => {
+                    editor.captionElement.addEventListener("pointerup", ev => {
                         const e = ev;
                         if (e.pointerId === (movingSession === null || movingSession === void 0 ? void 0 : movingSession.pointerId)) {
                             container.classList.add("refreshing");
@@ -409,13 +441,13 @@ export class PropertySheet {
                                 editor.style.removeProperty("transform");
                             }
                             if (typeof movingSession.snap === "number") {
-                                moveAround(movingSession.snap, node.nodeId, movingSession.snapAfter);
+                                moveAround(movingSession.snap, node.instanceId, movingSession.snapAfter);
                             }
                             movingSession = null;
                             editor.editorElement.classList.remove("moving");
                         }
                     });
-                    editor.titleElement.addEventListener("pointercancel", ev => {
+                    editor.captionElement.addEventListener("pointercancel", ev => {
                         const e = ev;
                         if (e.pointerId === (movingSession === null || movingSession === void 0 ? void 0 : movingSession.pointerId)) {
                             container.classList.add("refreshing");
@@ -428,7 +460,7 @@ export class PropertySheet {
                             editor.editorElement.classList.remove("moving");
                         }
                     });
-                    editor.titleElement.addEventListener("pointermove", ev => {
+                    editor.captionElement.addEventListener("pointermove", ev => {
                         const e = ev;
                         if (e.pointerId === (movingSession === null || movingSession === void 0 ? void 0 : movingSession.pointerId)) {
                             const movingElement = editor.editorElement;
@@ -456,7 +488,7 @@ export class PropertySheet {
                                         staticElement.style.transform =
                                             "translate(0, " + movingHeight + "px)";
                                         if (snapTop === null || thisOffsetTop < snapTop) {
-                                            snap = ed.node.nodeId;
+                                            snap = ed.node.instanceId;
                                             snapTop = thisOffsetTop;
                                             snapAfter = false;
                                         }
@@ -470,7 +502,7 @@ export class PropertySheet {
                                         staticElement.style.transform =
                                             "translate(0, " + -movingHeight + "px)";
                                         if (snapTop === null || thisOffsetTop > snapTop) {
-                                            snap = ed.node.nodeId;
+                                            snap = ed.node.instanceId;
                                             snapTop = thisOffsetTop;
                                             snapAfter = true;
                                         }
@@ -511,7 +543,18 @@ export class PropertySheet {
             new create().classColorInfo.setupAsBackgroundColor(addButton);
             addButton.addEventListener("click", _ => {
                 const instance = new create();
-                this.model[name] = (this.model[name] || []).concat([instance]);
+                if (replacing === null) {
+                    this.model[name] = (this.model[name] || []).concat([instance]);
+                }
+                else {
+                    const list = Array.from(this.bridge.model[name]);
+                    const index = list.findIndex(e => e.instanceId === replacing);
+                    if (index >= 0) {
+                        list[index] = instance;
+                        this.model[name] = list;
+                        cancelReplacing();
+                    }
+                }
                 updateControls(this.model, name);
                 addPanel.scrollIntoView();
             });

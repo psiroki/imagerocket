@@ -1,4 +1,4 @@
-import * as util from "./util.js";
+import * as util from "../common/util.js";
 export const colorMask = (() => {
     const canvas = document.createElement("canvas");
     canvas.width = 4;
@@ -140,6 +140,9 @@ export class ImageBuffer {
     get wordPitch() {
         return this.pitch >> 2;
     }
+    drawOnCanvas(canvas, resizeCanvas = true) {
+        this._drawOnCanvas(canvas, resizeCanvas);
+    }
     toCanvasImageBuffer(canvasFactory = defaultCanvasFactory) {
         return this._toCanvasImageBuffer(canvasFactory);
     }
@@ -177,17 +180,22 @@ export class ByteImageBuffer extends ImageBuffer {
     get pitch() {
         return this._pitch;
     }
+    _drawOnCanvas(canvas, resizeCanvas) {
+        if (resizeCanvas) {
+            canvas.width = this._width;
+            canvas.height = this._height;
+        }
+        const bytes = this._bytes;
+        canvas
+            .getContext("2d")
+            .putImageData(new ImageData(util.toUint8ClampedArray(bytes), this._pitch >> 2, this._height), 0, 0);
+    }
     toByteImageBuffer() {
         return this;
     }
     _toCanvasImageBuffer(canvasFactory) {
         const canvas = canvasFactory();
-        canvas.width = this._width;
-        canvas.height = this._height;
-        const bytes = this._bytes;
-        canvas
-            .getContext("2d")
-            .putImageData(new ImageData(util.toUint8ClampedArray(bytes), this._pitch >> 2, this._height), 0, 0);
+        this._drawOnCanvas(canvas, true);
         const buffer = new CanvasImageBuffer(canvas);
         buffer.cropParameters = this.cropParameters;
         return buffer;
@@ -215,6 +223,13 @@ export class CanvasImageBuffer extends ImageBuffer {
     get pitch() {
         return this.width * 4;
     }
+    _drawOnCanvas(newCanvas, resizeCanvas) {
+        if (resizeCanvas) {
+            newCanvas.width = this._canvas.width;
+            newCanvas.height = this._canvas.height;
+        }
+        newCanvas.getContext("2d").drawImage(this._canvas, 0, 0);
+    }
     toByteImageBuffer() {
         const buffer = new ByteImageBuffer(this.bytes, this.width, this.height, this.pitch);
         buffer.cropParameters = this.cropParameters;
@@ -227,9 +242,7 @@ export class CanvasImageBuffer extends ImageBuffer {
             return this;
         }
         else {
-            newCanvas.width = this._canvas.width;
-            newCanvas.height = this._canvas.height;
-            newCanvas.getContext("2d").drawImage(this._canvas, 0, 0);
+            this._drawOnCanvas(newCanvas, true);
             const buffer = new CanvasImageBuffer(newCanvas);
             buffer.cropParameters = this.cropParameters;
             return buffer;

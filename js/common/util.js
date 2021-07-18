@@ -157,3 +157,27 @@ export function createButton(caption, clickHandler, { classes } = {}) {
     }
     return button;
 }
+export function loadBlob(blob) {
+    return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = _ => {
+            resolve(fr.result);
+        };
+        fr.onerror = e => {
+            reject(e);
+        };
+        fr.readAsArrayBuffer(blob);
+    });
+}
+export function overlapsView(e) {
+    const r = e.getBoundingClientRect();
+    if (r.bottom < 0)
+        return false;
+    if (r.right < 0)
+        return false;
+    if (r.top > window.innerHeight)
+        return false;
+    if (r.left > window.innerWidth)
+        return false;
+    return true;
+}

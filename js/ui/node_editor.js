@@ -1,5 +1,5 @@
 import { globalSerializer } from "../processing/process_node.js";
-import { colorHashString } from "../processing/util.js";
+import { colorHashString } from "../common/util.js";
 import { PropertySheet } from "./properties.js";
 import { cloneTemplate } from "./templates.js";
 export class ProcessNodeEditor {
@@ -14,9 +14,11 @@ export class ProcessNodeEditor {
                 .appendChild(new PropertySheet(bridge).element);
         }
         const titleElement = this.editorElement.querySelector(".title");
-        titleElement.textContent = title;
+        const caption = titleElement.querySelector(".caption");
+        caption.textContent = title;
         colorHashString(title, 0.5).setupAsBackgroundColor(titleElement);
         this.titleElement = titleElement;
+        this.captionElement = caption;
     }
     set itemControls(newControls) {
         var _a;

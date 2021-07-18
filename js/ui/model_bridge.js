@@ -1,4 +1,4 @@
-import { replaceNullish } from "../processing/util.js";
+import { replaceNullish } from "../common/util.js";
 export class ModelBridge {
     constructor(model, schema, { inputObserver, outputObserver, } = {}) {
         this.rawModel = model;
