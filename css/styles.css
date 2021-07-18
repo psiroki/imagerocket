@@ -307,8 +307,8 @@ body {
 
 .itemControls > button.duplicate::after {
   border: 2px solid currentColor;
-  content: "\23fa";
   transform: translate(-6px, -3px);
+  background-image: radial-gradient(currentColor 50%, transparent 55%);
 }
 
 .imageView {
