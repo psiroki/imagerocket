@@ -102,7 +102,7 @@ export class ScrollZoom {
   }
 
   private constrainAndApply(): void {
-//    this.applyMatrixConstraints();
+    this.applyMatrixConstraints();
     this.image.style.transform = m.matrixArrayToCssMatrix(this.viewMatrix);
   }
 
