@@ -1,4 +1,7 @@
 import * as m from "../common/math.js";
+function add(a, b) {
+    return a.map((e, i) => i < 3 ? e + b[i] : e);
+}
 function sub(a, b) {
     return a.map((e, i) => i < 3 ? e - b[i] : e);
 }
@@ -42,7 +45,12 @@ export class ScrollZoom {
                     if (otherEvent.pointerId !== e.pointerId) {
                         const origin = coordsInCurrentTarget(otherEvent, this.view);
                         const deltaScale = vectorLength(sub(now, origin)) / vectorLength(sub(before, origin));
+                        const centerBefore = scale(add(before, origin), 0.5);
+                        const centerNow = scale(add(now, origin), 0.5);
                         this.scaleAroundClientCoordinates(origin, deltaScale);
+                        const delta = sub(centerNow, centerBefore);
+                        this.viewMatrix = m.multiplyMatrices(m.translation(delta), this.viewMatrix);
+                        this.constrainAndApply();
                     }
                 }
             }
@@ -59,6 +67,7 @@ export class ScrollZoom {
         view.addEventListener("wheel", e => {
             const deltaScale = Math.pow(2, -e.deltaY / 256);
             this.scaleAroundClientCoordinates(coordsInCurrentTarget(e), deltaScale);
+            this.constrainAndApply();
             e.preventDefault();
         });
     }
@@ -75,12 +84,12 @@ export class ScrollZoom {
     }
     scaleAroundClientCoordinates(coords, deltaScale) {
         const negOffset = scale(coords, -1);
-        const offset = scale(coords, 1 / (deltaScale * deltaScale));
-        this.viewMatrix = m.multiplyArrayOfMatrices([m.translation(negOffset), m.uniformScale(deltaScale), m.translation(offset), this.viewMatrix]);
-        this.constrainAndApply();
+        const offset = coords;
+        const transformMatrix = m.multiplyArrayOfMatrices([m.translation(offset), m.uniformScale(deltaScale), m.translation(negOffset)]);
+        this.viewMatrix = m.multiplyMatrices(transformMatrix, this.viewMatrix);
     }
     constrainAndApply() {
-        this.applyMatrixConstraints();
+        //    this.applyMatrixConstraints();
         this.image.style.transform = m.matrixArrayToCssMatrix(this.viewMatrix);
     }
     applyMatrixConstraints() {
