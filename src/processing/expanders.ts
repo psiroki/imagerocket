@@ -5,7 +5,7 @@ import { replaceNullish } from "../common/util.js";
 
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
 
-export class SimpleExpander extends SimpleProcessNode {
+export class BasicExpander extends SimpleProcessNode {
   serialize(): object {
     return this.ownBridge.exportToModel({ "_super": super.serialize() });
   }
@@ -83,6 +83,7 @@ export class SimpleExpander extends SimpleProcessNode {
   private bridge?: ModelBridge;
 }
 
-SimpleExpander["className"] = "SimpleExpander";
+BasicExpander["className"] = "BasicExpander";
+BasicExpander["aliases"] = ["SimpleExpander"];
 
-globalSerializer.addClass(SimpleExpander);
+globalSerializer.addClass(BasicExpander);

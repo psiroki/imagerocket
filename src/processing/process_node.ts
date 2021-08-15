@@ -1,6 +1,7 @@
 import { ImageBuffer } from "./image.js";
 import { ModelBridge } from "../ui/model_bridge.js";
 import { colorHashString, CssColorWithLuminosity, deepCopyJson } from "../common/util.js";
+import { nodeColorPastellizationFactor } from "../common/constants.js";
 
 /// The node may be transferred to a worker thread based on the
 /// features it requires.
@@ -46,7 +47,7 @@ export abstract class ProcessNode extends Serializable {
 
   get classColorInfo(): CssColorWithLuminosity {
     const className = globalSerializer.classNameFromInstance(this);
-    return colorHashString(className, 0.5);
+    return colorHashString(className, nodeColorPastellizationFactor);
   }
 
   /// Specify what features the node has to decide wether it can be
@@ -236,12 +237,18 @@ export class Serializer {
     if (name === "") name = classFunction["className"] ?? classFunction.name;
     console.log(`Class: ${classFunction.name} as ${name}`);
     this.classByName.set(name, classFunction);
+    const aliases = classFunction["aliases"] as (string[] | null | undefined);
+    if (aliases instanceof Array) {
+      for (let alias of aliases) {
+        this.classByName.set(alias, classFunction);
+      }
+    }
     this.nameByClass.set(classFunction, name);
   }
 
   *enumerateClasses(): Iterable<SerializableClass> {
-    for (let entry of this.classByName.entries()) {
-      yield new SerializableClass(entry[0], entry[1]);
+    for (let entry of this.nameByClass.entries()) {
+      yield new SerializableClass(entry[1], entry[0]);
     }
   }
 

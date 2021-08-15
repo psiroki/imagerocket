@@ -7,6 +7,10 @@ export class ImageView {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.view = cloneTemplate("imageView")!;
+    const close = this.view.querySelector(".close") as HTMLElement;
+    close.addEventListener("click", _ => {
+      this.view.remove();
+    });
     const contents = this.view.querySelector(".contents") as HTMLElement;
     contents.appendChild(canvas);
     this.zoomer = new ScrollZoom(contents);

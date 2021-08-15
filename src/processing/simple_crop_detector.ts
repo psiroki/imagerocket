@@ -3,7 +3,7 @@ import { ImageBuffer, Color, formatColor } from "./image.js";
 import { SimpleProcessNode, globalSerializer } from "./process_node.js";
 import * as util from "../common/util.js";
 
-export class SimpleCropDetector extends SimpleProcessNode {
+export class SolidCropDetector extends SimpleProcessNode {
   serialize(): object {
     return { "_super": super.serialize() };
   }
@@ -16,6 +16,7 @@ export class SimpleCropDetector extends SimpleProcessNode {
     buffer = buffer.toByteImageBuffer();
     const border = buffer.cropParameters.color;
     this.ownBridge.model["lastColor"] = border;
+    const channelDelta = this.ownBridge.model["channelDelta"];
     const inputWidth = buffer.width;
     const inputHeight = buffer.height;
     let rect = [0, 0, inputWidth, inputHeight];
@@ -30,7 +31,8 @@ export class SimpleCropDetector extends SimpleProcessNode {
                 return e;
               }
               return a[i ^ 2] - (side & 2) + 1;
-            })
+            }),
+            channelDelta
           )
         )
           break;
@@ -45,7 +47,8 @@ export class SimpleCropDetector extends SimpleProcessNode {
   private allBorderColor(
     border: Color,
     buffer: ImageBuffer,
-    rect: number[]
+    rect: number[],
+    channelDelta: number
   ): boolean {
     if (rect[0] >= rect[2] || rect[1] >= rect[3]) return false;
     const left = rect[0];
@@ -56,16 +59,41 @@ export class SimpleCropDetector extends SimpleProcessNode {
     const wordPitch = buffer.wordPitch;
     let pos = left + top * wordPitch;
     let rowStep = wordPitch - (right - left);
-    for (let y = top; y < bottom; ++y) {
-      for (let x = left; x < right; ++x) {
-        // TODO: we don't care if fully transparent pixels
-        // would be red or green, maybe premultiply colors?
-        if (border !== words[pos]) {
-          return false;
+    if (channelDelta) {
+      for (let y = top; y < bottom; ++y) {
+        for (let x = left; x < right; ++x) {
+          // TODO: we don't care if fully transparent pixels
+          // would be red or green, maybe premultiply colors?
+          if (!this.similar(border, words[pos], channelDelta)) {
+            return false;
+          }
+          ++pos;
         }
-        ++pos;
+        pos += rowStep;
       }
-      pos += rowStep;
+    } else {
+      for (let y = top; y < bottom; ++y) {
+        for (let x = left; x < right; ++x) {
+          // TODO: we don't care if fully transparent pixels
+          // would be red or green, maybe premultiply colors?
+          if (border !== words[pos]) {
+            return false;
+          }
+          ++pos;
+        }
+        pos += rowStep;
+      }
+    }
+    return true;
+  }
+
+  private similar(a: Color, b: Color, similarity: number): boolean {
+    // TODO handle alpha
+    for (let i = 0; i < 4; ++i) {
+      const c = i << 3;
+      const ac = (a >>> c) & 0xff;
+      const bc = (b >>> c) & 0xff;
+      if (Math.abs(ac - bc) > similarity) return false;
     }
     return true;
   }
@@ -73,9 +101,17 @@ export class SimpleCropDetector extends SimpleProcessNode {
   get ownBridge(): ModelBridge {
     if (!this.bridge) {
       this.bridge = new ModelBridge(
-        { "lastColor": null },
+        { "lastColor": null, "channelDelta": 0 },
         {
           "properties": [
+            {
+              "name": "channelDelta",
+              "editor": "exponentialSlider",
+              "label": "Max difference in each channel",
+              "expOffset": 1,
+              "expMin": 0,
+              "expMax": 255,
+            },
             {
               "name": "lastColor",
               "editor": "color?",
@@ -94,6 +130,7 @@ export class SimpleCropDetector extends SimpleProcessNode {
   private bridge?: ModelBridge;
 }
 
-SimpleCropDetector["className"] = "SimpleCropDetector";
+SolidCropDetector["className"] = "SolidCropDetector";
+SolidCropDetector["aliases"] = ["SimpleCropDetector"];
 
-globalSerializer.addClass(SimpleCropDetector);
+globalSerializer.addClass(SolidCropDetector);
