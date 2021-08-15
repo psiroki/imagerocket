@@ -2,6 +2,7 @@ import { globalSerializer } from "../processing/process_node.js";
 import { colorHashString } from "../common/util.js";
 import { PropertySheet } from "./properties.js";
 import { cloneTemplate } from "./templates.js";
+import { nodeColorPastellizationFactor } from "../common/constants.js";
 export class ProcessNodeEditor {
     constructor(node) {
         this.node = node;
@@ -16,7 +17,7 @@ export class ProcessNodeEditor {
         const titleElement = this.editorElement.querySelector(".title");
         const caption = titleElement.querySelector(".caption");
         caption.textContent = title;
-        colorHashString(title, 0.5).setupAsBackgroundColor(titleElement);
+        colorHashString(title, nodeColorPastellizationFactor).setupAsBackgroundColor(titleElement);
         this.titleElement = titleElement;
         this.captionElement = caption;
     }

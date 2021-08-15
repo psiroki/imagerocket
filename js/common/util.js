@@ -1,3 +1,4 @@
+import { randomScramble } from "./constants.js";
 export const workerEnvironment = !!self.document;
 export function toUint8ClampedArray(arr) {
     return new Uint8ClampedArray(arr.buffer, arr.byteOffset, arr.byteLength);
@@ -87,10 +88,27 @@ function _reverse(i) {
 const _lum = [54, 183, 18];
 const _colorMask = [88, 73, 0];
 const _mask = [193, 150, 164, 236, 216, 33, 40, 11];
-const _scramble = [
-    64049, 50664, 9917, 37895, 22145, 37623, 56494, 1203, 43986, 60549, 3907,
-    38678, 43874, 4152, 38391, 19918,
-];
+const _scramble = randomScramble
+    ? (() => {
+        const arr = Array(16)
+            .fill(0)
+            .map(_ => (Math.random() * 65536) | 0);
+        console.log(arr.map(x => x.toString(16).padStart(4, "0")).join(""));
+        return arr;
+    })()
+    : (hex => {
+        const l = hex.length;
+        const a = [];
+        for (let i = 0; i < l; i += 4) {
+            a.push(parseInt(hex.substring(i, i + 4), 16));
+        }
+        return a;
+    })("5860089eab335b8ce5bb25d58822bf63ea84f4693e1054389bfca1615fdb114a");
+// Varied: "8bbb5cc52989854c4c45a9eb1162d81d65f88b75d8b16cdf8a5b133a991c421d"
+// Pink: "c0952d574c351e30668dd7f19a445d7fcf53bcd1b8c82130181c5b6162d706cc"
+// Another varied: "c4d9ddc552245a0246cd4cb90c5e5f239710ae448d0e3c6ea889bcad1f3fa3ea"
+// Less weird: "5860089eab335b8ce5bb25d58822bf63ea84f4693e1054389bfca1615fdb114a"
+// Old: "fa31c5e826bd9407568192f7dcae04b3abd2ec850f439716ab62103895f74dce"
 export function colorHashString(s, pastellizationFactor = 0) {
     if (s.length < 3) {
         s = Array.from(s)

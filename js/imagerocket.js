@@ -1,10 +1,10 @@
-import { SimpleCropDetector } from "./processing/simple_crop_detector.js";
+import { SolidCropDetector } from "./processing/simple_crop_detector.js";
 import { CanvasImageBuffer } from "./processing/image.js";
 import { ImageProcessingPipeline, globalSerializer, } from "./processing/process_node.js";
 import { ManualColor, PointSampler } from "./processing/samplers.js";
 import * as drop from "./ui/drop.js";
 import * as util from "./common/util.js";
-import { SimpleExpander } from "./processing/expanders.js";
+import { BasicExpander } from "./processing/expanders.js";
 import { BorderColorFiller } from "./processing/crop_filler.js";
 import { ProcessNodeEditor } from "./ui/node_editor.js";
 import { ImageViewer } from "./processing/viewer.js";
@@ -33,8 +33,8 @@ class ImageRocketApp {
         }
         if (!pipeline) {
             let sampler = new PointSampler();
-            let detector = new SimpleCropDetector();
-            let expander = new SimpleExpander();
+            let detector = new SolidCropDetector();
+            let expander = new BasicExpander();
             expander.expandBy = 4;
             let manual = new ManualColor();
             let filler = new BorderColorFiller();

@@ -326,6 +326,49 @@ body {
 .imageView > .title {
   text-align: center;
   padding: 4px;
+  position: relative;
+  line-height: 28px;
+}
+
+.imageView .close {
+  position: absolute;
+  color: #ccc;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  left: 6px;
+  top: 5px;
+  box-sizing: border-box;
+  background: #444;
+  box-shadow: 0 2px 3px #0008;
+  transition: transform 200ms ease-in-out, background-color 50ms linear;
+}
+
+.imageView .close:hover {
+  transform: scale(1.5) rotate(180deg);
+}
+
+.imageView .close:active {
+  background: rgb(41, 52, 82);
+  transform: scale(1.25) rotate(180deg);
+  transition: transform 100ms ease-in-out, background-color 50ms linear;
+}
+
+.imageView .close::after,
+.imageView .close::before {
+  content: "";
+  position: absolute;
+  background: currentColor;
+  height: 14px;
+  width: 2px;
+  top: 3px;
+  left: 9px;
+  transform: rotate(-45deg);
+}
+
+.imageView .close::after {
+  transform: rotate(45deg);
 }
 
 .imageView > .contents {

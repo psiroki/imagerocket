@@ -1,5 +1,6 @@
 import { ModelBridge } from "../ui/model_bridge.js";
 import { colorHashString, deepCopyJson } from "../common/util.js";
+import { nodeColorPastellizationFactor } from "../common/constants.js";
 export class Serializable {
     serializedClone() {
         const arr = globalSerializer.deserializeAll(deepCopyJson(globalSerializer.serializeAll([this])));
@@ -14,7 +15,7 @@ export class ProcessNode extends Serializable {
     }
     get classColorInfo() {
         const className = globalSerializer.classNameFromInstance(this);
-        return colorHashString(className, 0.5);
+        return colorHashString(className, nodeColorPastellizationFactor);
     }
     /// Specify what features the node has to decide wether it can be
     /// run in a worker or not. The result may change based on the
@@ -176,11 +177,17 @@ export class Serializer {
             name = (_a = classFunction["className"]) !== null && _a !== void 0 ? _a : classFunction.name;
         console.log(`Class: ${classFunction.name} as ${name}`);
         this.classByName.set(name, classFunction);
+        const aliases = classFunction["aliases"];
+        if (aliases instanceof Array) {
+            for (let alias of aliases) {
+                this.classByName.set(alias, classFunction);
+            }
+        }
         this.nameByClass.set(classFunction, name);
     }
     *enumerateClasses() {
-        for (let entry of this.classByName.entries()) {
-            yield new SerializableClass(entry[0], entry[1]);
+        for (let entry of this.nameByClass.entries()) {
+            yield new SerializableClass(entry[1], entry[0]);
         }
     }
     serializeAll(nodes) {

@@ -2,7 +2,7 @@ import { ModelBridge } from "../ui/model_bridge.js";
 import { SimpleProcessNode, globalSerializer } from "./process_node.js";
 import { replaceNullish } from "../common/util.js";
 const rectSuffixes = ["Left", "Top", "Right", "Bottom"];
-export class SimpleExpander extends SimpleProcessNode {
+export class BasicExpander extends SimpleProcessNode {
     constructor() {
         super(...arguments);
         this.expand = 0;
@@ -62,5 +62,6 @@ export class SimpleExpander extends SimpleProcessNode {
         return buffer;
     }
 }
-SimpleExpander["className"] = "SimpleExpander";
-globalSerializer.addClass(SimpleExpander);
+BasicExpander["className"] = "BasicExpander";
+BasicExpander["aliases"] = ["SimpleExpander"];
+globalSerializer.addClass(BasicExpander);
