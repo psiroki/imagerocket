@@ -24,6 +24,10 @@ function coordsInCurrentTarget(e: MouseEvent, targetOverride: HTMLElement|null=n
 	return [e.clientX - r.x, e.clientY - r.y, 0, 1];
 }
 
+function nonPrimaryMouseButtonPointerEvent(e: any) {
+  return e instanceof PointerEvent && e.pointerType === "mouse" && e.button !== 0;
+}
+
 export class ScrollZoom {
   constructor(view: HTMLElement) {
     this.view = view;
@@ -32,6 +36,7 @@ export class ScrollZoom {
     this.pointerState = new Map();
 
     view.addEventListener("pointerdown", e => {
+      if (nonPrimaryMouseButtonPointerEvent(e)) return;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       this.pointerState.set(e.pointerId, e);
       e.preventDefault();
