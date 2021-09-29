@@ -18,6 +18,9 @@ function coordsInCurrentTarget(e, targetOverride = null) {
     const r = (targetOverride || e.currentTarget).getBoundingClientRect();
     return [e.clientX - r.x, e.clientY - r.y, 0, 1];
 }
+function nonPrimaryMouseButtonPointerEvent(e) {
+    return e instanceof PointerEvent && e.pointerType === "mouse" && e.button !== 0;
+}
 export class ScrollZoom {
     constructor(view) {
         this.viewMatrix = m.uniformScale(1);
@@ -25,6 +28,8 @@ export class ScrollZoom {
         this.image = this.view.querySelector("*");
         this.pointerState = new Map();
         view.addEventListener("pointerdown", e => {
+            if (nonPrimaryMouseButtonPointerEvent(e))
+                return;
             e.currentTarget.setPointerCapture(e.pointerId);
             this.pointerState.set(e.pointerId, e);
             e.preventDefault();
